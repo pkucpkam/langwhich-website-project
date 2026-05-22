@@ -4,7 +4,18 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import Link from "next/link";
-import { Shield, BookOpen, FileText, Users, LogOut, ArrowLeft, Loader2, Menu, X } from "lucide-react";
+import {
+  Shield,
+  BookOpen,
+  FileText,
+  Users,
+  LogOut,
+  ArrowLeft,
+  Loader2,
+  Menu,
+  X,
+  Lock,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout({
@@ -39,7 +50,10 @@ export default function AdminLayout({
 
   if (!isMounted || !isAuthenticated || user?.role !== "ADMIN") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B1220]">
+      <div className="min-h-screen bg-[#0B1220] flex flex-col items-center justify-center gap-4">
+        <Lock className="h-12 w-12 text-[#EF4444] animate-bounce" />
+        <h1 className="text-xl font-bold text-[#F9FAFB]">Unauthorized Access</h1>
+        <p className="text-sm text-[#9CA3AF]">Redirecting to standard area...</p>
         <Loader2 className="h-8 w-8 animate-spin text-[#2563EB]" />
       </div>
     );
@@ -54,7 +68,7 @@ export default function AdminLayout({
       desc: "Manage folders & study sets",
     },
     {
-      href: "/admin?tab=theory",
+      href: "/admin/theory/lessons",
       activeTab: "theory",
       label: "Theory Hub",
       icon: FileText,
@@ -70,7 +84,7 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B1220] flex text-[#F9FAFB]">
+    <div className="min-h-screen bg-[#0B1220] flex text-[#F9FAFB] flex-col md:flex-row">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 border-r border-[#1F2937] bg-[#111827] flex-shrink-0">
         {/* Brand Logo */}
@@ -85,8 +99,9 @@ export default function AdminLayout({
             const Icon = link.icon;
             // Determine active based on current query tab or pathname
             const isTabActive = pathname.startsWith("/admin") && (
-              (link.activeTab === "vocab" && (!window.location.search || window.location.search.includes("tab=vocab"))) ||
-              (window.location.search.includes(`tab=${link.activeTab}`))
+              (link.activeTab === "vocab" && pathname === "/admin" && (!window.location.search || window.location.search.includes("tab=vocab"))) ||
+              (link.activeTab === "theory" && pathname.startsWith("/admin/theory")) ||
+              (link.activeTab === "users" && pathname === "/admin" && window.location.search.includes("tab=users"))
             );
             return (
               <Link
@@ -179,8 +194,9 @@ export default function AdminLayout({
           {sidebarLinks.map((link) => {
             const Icon = link.icon;
             const isTabActive = pathname.startsWith("/admin") && (
-              (link.activeTab === "vocab" && (!window.location.search || window.location.search.includes("tab=vocab"))) ||
-              (window.location.search.includes(`tab=${link.activeTab}`))
+              (link.activeTab === "vocab" && pathname === "/admin" && (!window.location.search || window.location.search.includes("tab=vocab"))) ||
+              (link.activeTab === "theory" && pathname.startsWith("/admin/theory")) ||
+              (link.activeTab === "users" && pathname === "/admin" && window.location.search.includes("tab=users"))
             );
             return (
               <Link
@@ -207,6 +223,7 @@ export default function AdminLayout({
         <div className="p-4 border-t border-[#1F2937] bg-[#0B1220]/30 space-y-2">
           <Link
             href="/vocab"
+            onClick={() => setSidebarOpen(false)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#F9FAFB]"
           >
             <ArrowLeft size={14} />

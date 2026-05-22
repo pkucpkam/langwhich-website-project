@@ -2,35 +2,49 @@ package com.langwhich.app.theory;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "theory_folders")
+@Table(name = "theory_topics", indexes = {
+    @Index(name = "idx_theory_topic_slug", columnList = "slug", unique = true)
+})
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TheoryFolder {
+public class TheoryTopic {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String name;
+
+    @Column(nullable = false, unique = true, length = 120)
+    private String slug;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(length = 20)
-    @Builder.Default
-    private String color = "#2563EB";
+    @Column(length = 50)
+    private String icon;
 
-    @Column(length = 10)
+    @Column(name = "order_index", nullable = false)
     @Builder.Default
-    private String icon = "📚";
+    private int orderIndex = 0;
+
+    @Column(name = "is_published", nullable = false)
+    @Builder.Default
+    private boolean isPublished = false;
+
+    @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    @OrderBy("createdAt ASC")
+    private List<TheoryLesson> lessons = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

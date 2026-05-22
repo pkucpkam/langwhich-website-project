@@ -27,15 +27,17 @@ export function Navbar() {
     { href: "/", label: "Home" },
     ...(isMounted && isAuthenticated
       ? [
-        user?.role === "ADMIN"
-          ? { href: "/admin", label: "Admin Panel" }
-          : { href: "/dashboard", label: "Dashboard" },
-        { href: "/vocab", label: "Vocabulary" },
-      ]
+          user?.role === "ADMIN"
+            ? { href: "/admin", label: "Admin Panel" }
+            : { href: "/dashboard", label: "Dashboard" },
+          { href: "/vocab", label: "Vocabulary" },
+          { href: "/theory", label: "Theory Lessons" },
+        ]
       : [
-        { href: "/#features", label: "Features" },
-        { href: "/#", label: "Pricing" },
-      ]),
+          { href: "/theory", label: "Theory Lessons" },
+          { href: "/#features", label: "Features" },
+          { href: "/#", label: "Pricing" },
+        ]),
   ];
 
   return (
