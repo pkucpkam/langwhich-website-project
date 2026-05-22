@@ -8,7 +8,7 @@ group = 'com.langwhich'
 version = '0.0.1-SNAPSHOT'
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_17
 }
 
 configurations {
@@ -32,13 +32,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // Swagger / OpenAPI 3
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+
     // Database
     runtimeOnly 'org.postgresql:postgresql'
     
     // Flyway Migration
     implementation 'org.flywaydb:flyway-core'
-    // Explicitly define version matching Spring Boot 3.2.5's managed Flyway version to ensure compatibility
-    implementation 'org.flywaydb:flyway-database-postgresql:9.22.3'
 
     // JSON Web Tokens (JJWT)
     implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
@@ -60,3 +61,18 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.named('bootRun') {
+    systemProperty 'user.timezone', 'Asia/Ho_Chi_Minh'
+    if (file('.env').exists()) {
+        file('.env').readLines().each { line ->
+            if (!line.trim().isEmpty() && !line.trim().startsWith('#') && line.contains('=')) {
+                def parts = line.trim().split('=', 2)
+                def key = parts[0].trim()
+                def value = parts[1].trim()
+                environment key, value
+            }
+        }
+    }
+}
+

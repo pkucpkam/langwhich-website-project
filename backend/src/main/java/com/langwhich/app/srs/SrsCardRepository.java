@@ -18,6 +18,8 @@ public interface SrsCardRepository extends JpaRepository<SrsCard, Long> {
 
     Optional<SrsCard> findByUserIdAndVocabularyItemId(Long userId, Long vocabularyItemId);
 
+    boolean existsByUserIdAndVocabularyItemId(Long userId, Long vocabularyItemId);
+
     // Due cards: nextReview <= now
     @Query("SELECT c FROM SrsCard c WHERE c.user.id = :userId AND c.nextReview <= :now ORDER BY c.nextReview ASC")
     List<SrsCard> findDueCards(@Param("userId") Long userId, @Param("now") LocalDateTime now);
