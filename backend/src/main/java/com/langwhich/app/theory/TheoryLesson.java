@@ -6,8 +6,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "theory_lessons", indexes = {
-    @Index(name = "idx_theory_lesson_slug", columnList = "slug", unique = true),
-    @Index(name = "idx_theory_lesson_topic_id", columnList = "topic_id")
+        @Index(name = "idx_theory_lesson_slug", columnList = "slug", unique = true),
+        @Index(name = "idx_theory_lesson_topic_id", columnList = "topic_id")
 })
 @Getter
 @Setter
@@ -36,7 +36,6 @@ public class TheoryLesson {
     @Column(length = 500)
     private String thumbnail;
 
-    @Lob
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content; // Stored as Tiptap Rich Text JSON string
 

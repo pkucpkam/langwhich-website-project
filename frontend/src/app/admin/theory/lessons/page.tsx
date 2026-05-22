@@ -109,6 +109,22 @@ export default function AdminLessonsPage() {
         </Link>
       </div>
 
+      {/* Premium Sub-Navigation Tabs */}
+      <div className="flex border-b border-neutral-border gap-6">
+        <Link
+          href="/admin/theory/lessons"
+          className="pb-3 text-sm font-semibold border-b-2 border-primary text-primary transition-all"
+        >
+          Lessons Catalog
+        </Link>
+        <Link
+          href="/admin/theory/topics"
+          className="pb-3 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary transition-all"
+        >
+          Category Topics
+        </Link>
+      </div>
+
       {/* Filters Area */}
       <section className="bg-neutral-card border border-neutral-border rounded-2xl p-6 space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">

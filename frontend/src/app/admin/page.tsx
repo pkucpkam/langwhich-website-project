@@ -123,21 +123,32 @@ function AdminDashboardContent() {
         </div>
 
         {/* Action Buttons */}
-        {activeModule === "vocab" && vocabSubTab === "folders" && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              setVocabFolderName("");
-              setVocabFolderDesc("");
-              setVocabFolderColor(FOLDER_COLORS[0]);
-              setVocabFolderIcon(FOLDER_ICONS[0]);
-              setVocabFolderModalOpen(true);
-            }}
-          >
-            <Plus size={15} />
-            Official Collection
-          </Button>
+        {activeModule === "vocab" && (
+          vocabSubTab === "folders" ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setVocabFolderName("");
+                setVocabFolderDesc("");
+                setVocabFolderColor(FOLDER_COLORS[0]);
+                setVocabFolderIcon(FOLDER_ICONS[0]);
+                setVocabFolderModalOpen(true);
+              }}
+            >
+              <Plus size={15} />
+              Official Collection
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => router.push("/admin/vocab/create-lesson")}
+            >
+              <Plus size={15} />
+              Official Study Set
+            </Button>
+          )
         )}
       </div>
 

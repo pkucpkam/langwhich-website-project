@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { lessonsApi } from "@/api/lessons.api";
-import { foldersApi } from "@/api/folders.api";
+import { adminApi } from "@/api/admin.api";
 import type { Folder, VocabularyItemRequest } from "@/types/vocab";
 import { Plus, Trash2, Upload, ArrowLeft, Loader2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -20,12 +19,11 @@ const EMPTY_ITEM: VocabularyItemRequest = {
   exampleVi: "",
 };
 
-export default function CreateLessonPage() {
+export default function CreateOfficialLessonPage() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
   const [folderId, setFolderId] = useState<string>("");
   const [folders, setFolders] = useState<Folder[]>([]);
   const [items, setItems] = useState<VocabularyItemRequest[]>([{ ...EMPTY_ITEM }]);
@@ -34,7 +32,7 @@ export default function CreateLessonPage() {
   const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
-    foldersApi.getMyFolders().then(setFolders).catch(() => {});
+    adminApi.getOfficialFolders().then(setFolders).catch(() => {});
   }, []);
 
   const addItem = () => {
@@ -65,16 +63,16 @@ export default function CreateLessonPage() {
     setSubmitting(true);
     try {
       const validItems = items.filter((it) => it.word.trim() && it.definition.trim());
-      const lesson = await lessonsApi.createLesson({
+      const lesson = await adminApi.createOfficialLesson({
         title: title.trim(),
         description: description.trim() || undefined,
-        isPrivate,
+        isPrivate: false,
         folderId: folderId ? Number(folderId) : undefined,
         vocabularyItems: validItems,
       });
       router.push(`/vocab/lessons/${lesson.id}`);
     } catch {
-      setErrors({ submit: "Failed to create lesson. Please try again." });
+      setErrors({ submit: "Failed to create official lesson. Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -85,54 +83,54 @@ export default function CreateLessonPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <Link href="/vocab" className="p-2 rounded-xl border border-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB]" id="create-lesson-back">
+          <Link href="/admin?tab=vocab" className="p-2 rounded-xl border border-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB]" id="create-official-lesson-back">
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-[#F9FAFB]">Create New Lesson</h1>
-            <p className="text-sm text-[#9CA3AF]">Add vocabulary words and save as a study set</p>
+            <h1 className="text-2xl font-bold text-[#F9FAFB]">Create Official Study Set</h1>
+            <p className="text-sm text-[#9CA3AF]">Curate an official vocabulary set visible to all users</p>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
-          <Link href="/vocab">
-            <Button variant="outline" type="button" id="create-lesson-cancel-top">
+          <Link href="/admin?tab=vocab">
+            <Button variant="outline" type="button" id="create-official-lesson-cancel-top">
               Cancel
             </Button>
           </Link>
           <Button
             type="submit"
-            form="create-lesson-form"
+            form="create-official-lesson-form"
             variant="primary"
             isLoading={submitting}
-            id="create-lesson-submit-top"
+            id="create-official-lesson-submit-top"
           >
-            Create Lesson
+            Create Study Set
           </Button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} id="create-lesson-form">
+      <form onSubmit={handleSubmit} id="create-official-lesson-form">
         {/* Lesson Info */}
         <div className="rounded-2xl border border-[#1F2937] bg-[#111827] p-6 mb-6 space-y-4">
-          <h2 className="text-base font-semibold text-[#F9FAFB]">Lesson Details</h2>
+          <h2 className="text-base font-semibold text-[#F9FAFB]">Study Set Details</h2>
 
           <Input
-            id="create-lesson-title"
+            id="create-official-lesson-title"
             label="Title *"
-            placeholder="e.g. TOEIC Vocabulary Part 5"
+            placeholder="e.g. Cambridge IELTS 18 Vocabulary"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             error={errors.title}
           />
 
           <div>
-            <label className="block text-sm font-medium text-[#9CA3AF] mb-1.5" htmlFor="create-lesson-desc">
+            <label className="block text-sm font-medium text-[#9CA3AF] mb-1.5" htmlFor="create-official-lesson-desc">
               Description
             </label>
             <textarea
-              id="create-lesson-desc"
-              placeholder="Brief description of this lesson..."
+              id="create-official-lesson-desc"
+              placeholder="Brief description of this set..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -140,37 +138,23 @@ export default function CreateLessonPage() {
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#9CA3AF] mb-1.5" htmlFor="create-lesson-folder">
-                Folder (optional)
-              </label>
-              <select
-                id="create-lesson-folder"
-                value={folderId}
-                onChange={(e) => setFolderId(e.target.value)}
-                className="w-full px-4 py-3 text-sm rounded-xl border border-[#1F2937] bg-[#0B1220] text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
-              >
-                <option value="">No folder</option>
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.icon} {f.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer pb-0.5" htmlFor="create-lesson-private">
-                <input
-                  type="checkbox"
-                  id="create-lesson-private"
-                  checked={isPrivate}
-                  onChange={(e) => setIsPrivate(e.target.checked)}
-                  className="w-4 h-4 rounded border-[#1F2937] accent-[#2563EB]"
-                />
-                <span className="text-sm text-[#9CA3AF]">Private lesson</span>
-              </label>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-[#9CA3AF] mb-1.5" htmlFor="create-official-lesson-folder">
+              Official Collection / Folder (optional)
+            </label>
+            <select
+              id="create-official-lesson-folder"
+              value={folderId}
+              onChange={(e) => setFolderId(e.target.value)}
+              className="w-full px-4 py-3 text-sm rounded-xl border border-[#1F2937] bg-[#0B1220] text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
+            >
+              <option value="">No folder</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.icon} {f.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -187,8 +171,8 @@ export default function CreateLessonPage() {
               <button
                 type="button"
                 onClick={() => setImportModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1F2937] text-xs text-[#9CA3AF] hover:text-[#F9FAFB] hover:border-[#2563EB]/50 transition-all font-medium"
-                id="create-lesson-import-btn"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB] hover:border-[#2563EB]/50 transition-all font-medium"
+                id="create-official-lesson-import-btn"
               >
                 <Upload size={13} />
                 Quick Import
@@ -197,7 +181,7 @@ export default function CreateLessonPage() {
                 type="button"
                 onClick={addItem}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#2563EB] text-xs text-white hover:bg-[#1D4ED8] transition-all font-medium"
-                id="create-lesson-add-word"
+                id="create-official-lesson-add-word"
               >
                 <Plus size={13} />
                 Add Word
@@ -308,7 +292,7 @@ export default function CreateLessonPage() {
             type="button"
             onClick={addItem}
             className="mt-4 w-full py-3 rounded-xl border border-dashed border-[#1F2937] text-sm text-[#9CA3AF] hover:border-[#2563EB]/50 hover:text-[#2563EB] transition-all"
-            id="create-lesson-add-word-bottom"
+            id="create-official-lesson-add-word-bottom"
           >
             + Add another word
           </button>

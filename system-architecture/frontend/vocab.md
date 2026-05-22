@@ -114,3 +114,108 @@ sequenceDiagram
 **Chi tiết API tương tác:**
 * `srsApi.getDueCards()`: Fetch danh sách thẻ SRS đến hạn.
 * `srsApi.reviewCard(cardId, rating)`: Gửi đánh giá độ khó lên server ngay lập tức cho từng thẻ để server tính toán khoảng cách ôn tập tiếp theo (SM-2 Algorithm).
+
+---
+
+## 5. Quản Lý Vocab Hub Của Admin & Bài Học Official
+
+Phần quản lý Vocab Hub của Admin cho phép quản trị viên hệ thống biên soạn các bộ sưu tập thư mục (Official Collections) và các bộ từ vựng mẫu (Official Study Sets) hiển thị công khai tới mọi người dùng.
+
+### 5.1. Logic Triển Khai (Logic of Implementation)
+* **Quyền và Khởi Tạo**: Chỉ tài khoản có vai trò `ADMIN` mới truy cập được các API trong `/api/admin` và thao tác trên phân hệ này.
+* **Cờ Official**: Khi thư mục hoặc bài học được Admin tạo lập, hệ thống gán cờ `isOfficial = true` và lưu trữ `creator_id` là ID của chính tài khoản admin đó.
+* **Đồng Nhất Creator**: Trên toàn bộ hệ thống (giao diện học tập công khai, danh sách bài học, chi tiết bài học), khi `isOfficial = true`, thuộc tính hiển thị người tạo `creatorUsername` được thay thế bằng chuỗi đại diện `"Trang web"` (hoặc tên hệ thống) thay vì tên/email của cá nhân Admin đó để duy trì tính nhất quán thương hiệu và bảo mật thông tin nội bộ.
+* **Luồng Người Dùng Thường**: Giữ nguyên không đổi (tự học, tự soạn, có cờ `isOfficial = false`, lưu đúng thông tin người dùng tạo).
+
+### 5.2. Quản Lý Trạng Trái (State Management)
+* **Client-side State**:
+  * Trạng thái tab phụ tại `/admin?tab=vocab`: `vocabSubTab` kiểm soát việc chuyển đổi hiển thị giữa các thư mục official (`folders`) và toàn bộ bài học (`sets`).
+  * Danh sách dữ liệu `vocabFoldersList` và `lessonsList` được tải tự động qua hook `useEffect` phụ thuộc vào `activeModule` và `vocabSubTab` được chọn.
+  * Form tạo bài học/thư mục Official quản lý bằng local state, riêng trang `/admin/vocab/create-lesson` gọi `adminApi.getOfficialFolders()` để nạp danh sách thư mục official liên quan thay vì danh sách thư mục cá nhân.
+* **Server-side Flow**:
+  * Admin tạo Official Set: `AdminController.createOfficialLesson` ➔ `LessonService.createOfficialLesson` (gán cờ `isOfficial = true`, `isPrivate = false`) ➔ `LessonRepository.save` ➔ PostgreSQL.
+
+### 5.3. Tích hợp FE-BE (Frontend-Backend Integration)
+| Phương thức | Đường dẫn API | Payload DTO / Request | Phản hồi (Response DTO) | Vai trò |
+|---|---|---|---|---|
+| **GET** | `/api/admin/folders` | None | `List<FolderResponse>` | Lấy danh sách thư mục Official |
+| **POST** | `/api/admin/folders` | `FolderRequest` | `FolderResponse` | Tạo mới thư mục Official |
+| **GET** | `/api/admin/lessons` | Params: `page, size` | `PaginatedResponse<LessonResponse>` | Xem tất cả bài học trong hệ thống |
+| **POST** | `/api/admin/lessons` | `CreateLessonRequest` | `LessonResponse` | Tạo bài học Official mới (`isOfficial = true`, `isPrivate = false`) |
+| **DELETE** | `/api/admin/lessons/{id}` | None | Void | Xóa bài học |
+
+### 5.4. Sơ Đồ Mermaid (Mermaid Diagrams)
+
+#### Luồng Tạo Bài Học Official (Admin Study Set Creation Sequence)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin
+    participant FE as Next.js Admin Page (/admin/vocab/create-lesson)
+    participant BE as AdminController (Spring Boot)
+    participant Service as LessonService
+    participant DB as PostgreSQL
+
+    Admin->>FE: Nhập tiêu đề, mô tả, từ vựng và nhấn "Create"
+    FE->>BE: POST /api/admin/lessons (CreateLessonRequest) [Token JWT Admin]
+    Note over BE: Kiểm tra vai trò ADMIN của User
+    BE->>Service: createOfficialLesson(Request, AdminUser)
+    Note over Service: Thiết lập isOfficial = true, isPrivate = false
+    Service->>DB: INSERT INTO lessons, vocabulary_items
+    DB-->>Service: Lưu thành công
+    Service-->>BE: Lesson (isOfficial=true, creatorUsername="Trang web")
+    FE-->>FE: 200 OK (LessonResponse DTO)
+    FE->>Admin: Điều hiện về trang chi tiết bài học (/vocab/lessons/{id})
+```
+
+---
+
+## 6. Hệ Thống Nhập Liệu Từ Vựng Nhanh (Import Engine)
+
+Hệ thống nhập liệu nhanh (`ImportModal`) là một component tái sử dụng cao, được tích hợp tại tất cả các màn hình tạo mới hoặc chỉnh sửa bài học (cả phía người dùng và quản trị viên). Component này cung cấp ba phương thức nhập liệu phong phú: Nhập từ file Excel, file TXT, và dán văn bản trực tiếp.
+
+### 6.1. Logic Triển Khai (Logic of Implementation)
+* **Xử lý File nhị phân (Excel)**: Tải động thư viện `xlsx` khi người dùng tải tệp lên để giảm thiểu tối đa bundle size ban đầu của client. Đọc dữ liệu nhị phân từ cột A (Từ vựng), B (Định nghĩa), C (Phiên âm), D (Từ loại), E (Ví dụ tiếng Anh), F (Dịch tiếng Việt).
+* **Đọc File văn bản (.txt)**: Sử dụng API `FileReader` tiêu chuẩn của trình duyệt để đọc nội dung text không đồng bộ từ tệp đã chọn.
+* **Bộ Phân Tích Ký Tự Phân Cách Tự Động (Auto-Separator Parser)**: Đối với các nguồn văn bản dạng `.txt` hoặc nội dung dán thủ công, parser thực hiện duyệt qua từng dòng và ưu tiên tự động phát hiện ký tự phân cách theo thứ tự giảm dần:
+  1. Ký tự Tab (`\t`)
+  2. Ký tự Pipe (`|`)
+  3. Dấu gạch ngang có khoảng cách (` - `)
+  4. Dấu gạch ngang (`-`)
+  5. Dấu hai chấm (`:`)
+  Nếu dòng không chứa bất kỳ ký tự phân cách nào, toàn bộ dòng đó sẽ được coi là từ vựng (`word`) và phần định nghĩa (`definition`) sẽ để trống để người dùng bổ sung thủ công.
+
+### 6.2. Quản Lý Trạng Thái (State Management)
+* **Local Modal State**:
+  * `activeTab`: Kiểm soát tab hiện tại (`'file'` hoặc `'paste'`).
+  * `pastedText`: Lưu trữ tạm thời nội dung chuỗi văn bản đang được dán để phân tích động độ dài danh sách.
+  * `dragActive`: Flag kiểm soát giao diện hiệu ứng kéo thả tập tin (Drag and drop overlay styling).
+  * `fileLoading`: Hiển thị Spinner chờ đợi trong khi trình duyệt phân tích file nhị phân lớn hoặc tệp text nặng.
+
+### 6.3. Sơ Đồ Mermaid (Mermaid Diagrams)
+
+#### Quy trình Phân tích và Nhập liệu của Parser (Parser Import Workflow)
+```mermaid
+graph TD
+    START[Bắt đầu nhập liệu] --> CHOOSE{Chọn phương thức}
+    
+    CHOOSE -->|Tải file Excel| EXCEL[1. Đọc file nhị phân qua XLSX]
+    EXCEL --> EXCEL_MAP[2. Trích xuất Cột A-F sang Vocab DTO]
+    
+    CHOOSE -->|Tải file TXT| READ_TXT[1. Đọc nội dung qua FileReader]
+    CHOOSE -->|Dán văn bản| PASTE[1. Đọc nội dung textarea trực tiếp]
+    
+    READ_TXT --> PARSE_LINE[2. Tách văn bản thành các dòng độc lập]
+    PASTE --> PARSE_LINE
+    
+    PARSE_LINE --> SPLIT_LINE{Dòng có ký tự phân cách?}
+    SPLIT_LINE -->|Tab / Pipe / Dash / Colon| SPLIT_OK[Tách thành các trường tương ứng]
+    SPLIT_LINE -->|Không có| SPLIT_NONE[Gán cả dòng làm Từ vựng]
+    
+    SPLIT_OK --> BUILD_DTO[Khởi tạo Vocab Item Request]
+    SPLIT_NONE --> BUILD_DTO
+    EXCEL_MAP --> SAVE_ITEMS[Gửi danh sách Vocab đã parse về Form]
+    BUILD_DTO --> SAVE_ITEMS
+    
+    SAVE_ITEMS --> END[Cập nhật UI bảng chỉnh sửa từ vựng]
+```

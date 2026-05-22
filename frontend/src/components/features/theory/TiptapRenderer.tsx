@@ -116,7 +116,9 @@ function renderNode(node: TiptapNode): React.ReactNode {
     case "listItem":
       return (
         <li className="leading-7">
-          {node.content?.map((child, i) => renderNode(child))}
+          {node.content?.map((child, i) => (
+            <React.Fragment key={i}>{renderNode(child)}</React.Fragment>
+          ))}
         </li>
       );
 

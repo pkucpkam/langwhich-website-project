@@ -127,7 +127,7 @@ public class FolderService {
             .icon(folder.getIcon())
             .isOfficial(folder.isOfficial())
             .creatorId(folder.getCreator().getId())
-            .creatorUsername(folder.getCreator().getDisplayUsername())
+            .creatorUsername(folder.isOfficial() ? "Trang web" : folder.getCreator().getDisplayUsername())
             .lessonCount(lessonCount)
             .createdAt(folder.getCreatedAt())
             .build();

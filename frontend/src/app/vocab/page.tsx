@@ -49,8 +49,8 @@ export default function VocabHomePage() {
       setLoading(true);
       await Promise.all([
         fetchLessons(),
-        foldersApi.getOfficialFolders().then(setFolders).catch(() => {}),
-        historyApi.getDailyActivity().then(setHeatmapData).catch(() => {}),
+        foldersApi.getOfficialFolders().then(setFolders).catch(() => { }),
+        historyApi.getDailyActivity().then(setHeatmapData).catch(() => { }),
       ]);
       setLoading(false);
     };

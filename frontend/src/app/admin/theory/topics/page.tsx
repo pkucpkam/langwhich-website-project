@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Layers,
   PlusCircle,
@@ -123,6 +124,22 @@ export default function AdminTopicsPage() {
         <p className="text-sm text-text-secondary mt-1">
           Configure structured TOEIC topic tracks and publish learning branches.
         </p>
+      </div>
+
+      {/* Premium Sub-Navigation Tabs */}
+      <div className="flex border-b border-neutral-border gap-6">
+        <Link
+          href="/admin/theory/lessons"
+          className="pb-3 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary transition-all"
+        >
+          Lessons Catalog
+        </Link>
+        <Link
+          href="/admin/theory/topics"
+          className="pb-3 text-sm font-semibold border-b-2 border-primary text-primary transition-all"
+        >
+          Category Topics
+        </Link>
       </div>
 
       {/* Side-by-side or stacked layout depending on viewport */}

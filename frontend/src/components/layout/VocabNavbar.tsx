@@ -14,14 +14,12 @@ import {
   LogOut,
   Shield,
   ChevronDown,
-  FileText,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/vocab", label: "Home", icon: Home },
-  { href: "/vocab/theory", label: "Theory", icon: FileText },
   { href: "/vocab/my-lessons", label: "My Lessons", icon: Library },
   { href: "/vocab/srs-review", label: "SRS Review", icon: Brain },
   { href: "/vocab/study-history", label: "History", icon: History },

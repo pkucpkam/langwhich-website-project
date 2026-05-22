@@ -241,7 +241,7 @@ public class LessonService {
             .isPrivate(lesson.isPrivate())
             .isOfficial(lesson.isOfficial())
             .creatorId(lesson.getCreator().getId())
-            .creatorUsername(lesson.getCreator().getDisplayUsername())
+            .creatorUsername(lesson.isOfficial() ? "Trang web" : lesson.getCreator().getDisplayUsername())
             .folderId(lesson.getFolder() != null ? lesson.getFolder().getId() : null)
             .folderName(lesson.getFolder() != null ? lesson.getFolder().getName() : null)
             .createdAt(lesson.getCreatedAt());
