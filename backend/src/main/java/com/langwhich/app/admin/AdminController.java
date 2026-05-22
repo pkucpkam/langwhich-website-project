@@ -7,6 +7,10 @@ import com.langwhich.app.history.StudySessionRepository;
 import com.langwhich.app.lesson.LessonService;
 import com.langwhich.app.lesson.dto.CreateLessonRequest;
 import com.langwhich.app.lesson.dto.LessonResponse;
+import com.langwhich.app.theory.TheoryArticle;
+import com.langwhich.app.theory.TheoryArticleService;
+import com.langwhich.app.theory.TheoryFolder;
+import com.langwhich.app.theory.TheoryFolderService;
 import com.langwhich.app.user.User;
 import com.langwhich.app.user.UserRepository;
 import jakarta.validation.Valid;
@@ -32,6 +36,8 @@ public class AdminController {
     private final LessonService lessonService;
     private final FolderService folderService;
     private final StudySessionRepository studySessionRepository;
+    private final TheoryArticleService theoryArticleService;
+    private final TheoryFolderService theoryFolderService;
 
     // ===== USERS =====
 
@@ -61,6 +67,15 @@ public class AdminController {
         return ResponseEntity.ok(lessonService.createOfficialLesson(request, admin));
     }
 
+    @DeleteMapping("/lessons/{id}")
+    public ResponseEntity<Void> deleteLesson(
+        @PathVariable Long id,
+        @AuthenticationPrincipal User admin
+    ) {
+        lessonService.deleteLesson(id, admin);
+        return ResponseEntity.noContent().build();
+    }
+
     // ===== FOLDERS =====
 
     @GetMapping("/folders")
@@ -74,6 +89,58 @@ public class AdminController {
         @AuthenticationPrincipal User admin
     ) {
         return ResponseEntity.ok(folderService.createOfficialFolder(request, admin));
+    }
+
+    // ===== THEORY ARTICLES =====
+
+    @PostMapping("/theory")
+    public ResponseEntity<TheoryArticle> createTheoryArticle(
+        @Valid @RequestBody TheoryArticle request,
+        @RequestParam(required = false) Long folderId
+    ) {
+        return ResponseEntity.ok(theoryArticleService.createArticle(request, folderId));
+    }
+
+    @PutMapping("/theory/{id}")
+    public ResponseEntity<TheoryArticle> updateTheoryArticle(
+        @PathVariable Long id,
+        @Valid @RequestBody TheoryArticle request,
+        @RequestParam(required = false) Long folderId
+    ) {
+        return ResponseEntity.ok(theoryArticleService.updateArticle(id, request, folderId));
+    }
+
+    @DeleteMapping("/theory/{id}")
+    public ResponseEntity<Void> deleteTheoryArticle(
+        @PathVariable Long id
+    ) {
+        theoryArticleService.deleteArticle(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ===== THEORY FOLDERS =====
+
+    @PostMapping("/theory/folders")
+    public ResponseEntity<TheoryFolder> createTheoryFolder(
+        @Valid @RequestBody TheoryFolder request
+    ) {
+        return ResponseEntity.ok(theoryFolderService.createFolder(request));
+    }
+
+    @PutMapping("/theory/folders/{id}")
+    public ResponseEntity<TheoryFolder> updateTheoryFolder(
+        @PathVariable Long id,
+        @Valid @RequestBody TheoryFolder request
+    ) {
+        return ResponseEntity.ok(theoryFolderService.updateFolder(id, request));
+    }
+
+    @DeleteMapping("/theory/folders/{id}")
+    public ResponseEntity<Void> deleteTheoryFolder(
+        @PathVariable Long id
+    ) {
+        theoryFolderService.deleteFolder(id);
+        return ResponseEntity.noContent().build();
     }
 
     // ===== LEADERBOARD =====
