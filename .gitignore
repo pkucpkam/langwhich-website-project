@@ -62,6 +62,8 @@ lerna-debug.log*
 *.tar.gz
 *.rar
 
+.gradle/
+
 # Log files & Crash dumps
 *.log
 **/logs/
