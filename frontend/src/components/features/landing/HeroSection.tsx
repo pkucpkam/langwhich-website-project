@@ -1,8 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useAuthStore } from "@/store/auth.store";
 
 export function HeroSection() {
+  const { isAuthenticated } = useAuthStore();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const startHref = isMounted && isAuthenticated ? "/dashboard" : "/auth/register";
+  const startText = isMounted && isAuthenticated ? "Go to Dashboard" : "Start for Free";
+
   return (
     <section className="relative overflow-hidden py-24 md:py-32 lg:py-40">
       {/* Background gradient orbs */}
@@ -34,9 +48,9 @@ export function HeroSection() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/auth/register">
+          <Link href={startHref}>
             <Button variant="primary" size="lg" id="hero-cta-start">
-              Start for Free
+              {startText}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>

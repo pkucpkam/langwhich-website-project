@@ -14,12 +14,14 @@ import {
   LogOut,
   Shield,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/vocab", label: "Home", icon: Home },
+  { href: "/vocab/theory", label: "Theory", icon: FileText },
   { href: "/vocab/my-lessons", label: "My Lessons", icon: Library },
   { href: "/vocab/srs-review", label: "SRS Review", icon: Brain },
   { href: "/vocab/study-history", label: "History", icon: History },
@@ -116,7 +118,7 @@ export function VocabNavbar() {
               <div className="absolute right-0 top-12 z-20 w-48 rounded-xl border border-[#1F2937] bg-[#0B1220] shadow-xl py-1">
                 {user?.role === "ADMIN" && (
                   <Link
-                    href="/vocab/admin"
+                    href="/admin"
                     className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-[#1F2937] transition-colors"
                     id="vocab-nav-admin"
                   >

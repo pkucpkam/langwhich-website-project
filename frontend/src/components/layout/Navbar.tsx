@@ -2,27 +2,41 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookOpen, Menu, X, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { useAuthStore } from "@/store/auth.store";
 
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/#features", label: "Features" },
-  { href: "/#", label: "Pricing" },
-];
-
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const { isAuthenticated, user, clearAuth } = useAuthStore();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleLogout = () => {
     clearAuth();
     window.location.href = "/";
   };
+
+  const navLinks = [
+    { href: "/", label: "Home" },
+    ...(isMounted && isAuthenticated
+      ? [
+        user?.role === "ADMIN"
+          ? { href: "/admin", label: "Admin Panel" }
+          : { href: "/dashboard", label: "Dashboard" },
+        { href: "/vocab", label: "Vocabulary" },
+      ]
+      : [
+        { href: "/#features", label: "Features" },
+        { href: "/#", label: "Pricing" },
+      ]),
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-border bg-neutral-background/80 backdrop-blur-md">
@@ -57,7 +71,7 @@ export function Navbar() {
 
         {/* Auth Actions */}
         <div className="hidden md:flex items-center gap-4">
-          {isAuthenticated ? (
+          {isMounted && isAuthenticated ? (
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <User className="h-4 w-4" />
@@ -116,7 +130,7 @@ export function Navbar() {
             ))}
 
             <div className="border-t border-neutral-border pt-4 flex flex-col gap-2">
-              {isAuthenticated ? (
+              {isMounted && isAuthenticated ? (
                 <Button variant="ghost" size="sm" onClick={handleLogout} fullWidth>
                   <LogOut className="h-4 w-4" />
                   Logout
