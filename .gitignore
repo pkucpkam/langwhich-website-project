@@ -1,1 +1,77 @@
+# OS & System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+.factorypath
+bin/
+
+# Frontend (Next.js & Node)
+**/node_modules/
+**/dist/
+**/build/
+**/.next/
+**/out/
+.docusaurus/
+.cache/
+.parcel-cache/
+.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Frontend Env & Credentials
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env.local
+
+# Backend (Spring Boot & Maven)
+**/target/
+**/.mvn/
+**/pom.xml.tag
+**/pom.xml.releaseBackup
+**/pom.xml.next
+**/release.properties
+**/dependency-reduced-pom.xml
+**/buildNumber.properties
+**/.gpg/
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+.gradle/
+
+# Log files & Crash dumps
+*.log
+**/logs/
+**/log/
+
+# Temp & Agent Workspace files
 PLAN.md
+.agent/temp/
+.agent/logs/
+.agent/cache/
+.gemini/
