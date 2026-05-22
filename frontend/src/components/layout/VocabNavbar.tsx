@@ -20,10 +20,10 @@ import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/vocab", label: "Home", icon: Home },
-  { href: "/my-lessons", label: "My Lessons", icon: Library },
-  { href: "/srs-review", label: "SRS Review", icon: Brain },
-  { href: "/study-history", label: "History", icon: History },
-  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { href: "/vocab/my-lessons", label: "My Lessons", icon: Library },
+  { href: "/vocab/srs-review", label: "SRS Review", icon: Brain },
+  { href: "/vocab/study-history", label: "History", icon: History },
+  { href: "/vocab/leaderboard", label: "Leaderboard", icon: Trophy },
 ];
 
 export function VocabNavbar() {
@@ -84,7 +84,7 @@ export function VocabNavbar() {
         {/* Right actions */}
         <div className="flex items-center gap-3">
           <Link
-            href="/create-lesson"
+            href="/vocab/create-lesson"
             id="vocab-nav-create"
             className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-[#2563EB] text-white hover:bg-[#1D4ED8] transition-all duration-200"
           >
@@ -116,7 +116,7 @@ export function VocabNavbar() {
               <div className="absolute right-0 top-12 z-20 w-48 rounded-xl border border-[#1F2937] bg-[#0B1220] shadow-xl py-1">
                 {user?.role === "ADMIN" && (
                   <Link
-                    href="/admin"
+                    href="/vocab/admin"
                     className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-[#1F2937] transition-colors"
                     id="vocab-nav-admin"
                   >

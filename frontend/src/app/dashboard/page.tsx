@@ -31,7 +31,7 @@ export default function DashboardPage() {
       icon: BookOpen,
       title: "Vocabulary",
       description: "Practice flashcards and word drills",
-      href: "/vocabulary",
+      href: "/vocab",
       color: "text-blue-400",
       bg: "bg-blue-400/10",
     },

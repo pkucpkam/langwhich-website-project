@@ -128,7 +128,7 @@ export default function VocabHomePage() {
               />
             </div>
             <Link
-              href="/create-lesson"
+              href="/vocab/create-lesson"
               id="vocab-home-create-btn"
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-[#2563EB] text-white hover:bg-[#1D4ED8] transition-all duration-200"
             >
@@ -146,7 +146,7 @@ export default function VocabHomePage() {
           <div className="text-center py-20">
             <p className="text-[#9CA3AF] text-lg">No lessons found.</p>
             <Link
-              href="/create-lesson"
+              href="/vocab/create-lesson"
               className="mt-4 inline-flex items-center gap-2 text-[#2563EB] hover:underline text-sm"
             >
               <Plus size={14} />
