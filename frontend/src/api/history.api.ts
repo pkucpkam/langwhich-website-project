@@ -1,6 +1,5 @@
 import { vocabApiClient } from "@/lib/vocab-api-client";
 import type {
-  LeaderboardEntry,
   StudySession,
   StudySessionRequest,
 } from "@/types/vocab";
@@ -18,13 +17,6 @@ export const historyApi = {
 
   getDailyActivity: async (): Promise<Record<string, number>> => {
     const { data } = await vocabApiClient.get("/history/daily");
-    return data;
-  },
-};
-
-export const leaderboardApi = {
-  getLeaderboard: async (): Promise<LeaderboardEntry[]> => {
-    const { data } = await vocabApiClient.get("/leaderboard");
     return data;
   },
 };

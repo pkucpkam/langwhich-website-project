@@ -1,11 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { ArrowLeft, BookOpen, Edit3, Sparkles } from "lucide-react";
 import { AdminExerciseForm } from "@/features/exercise/components/AdminExerciseForm";
+import { QuickImportForm } from "@/features/exercise/components/QuickImportForm";
+import { cn } from "@/lib/utils";
 
 export default function AdminExerciseCreatePage() {
+  const [activeTab, setActiveTab] = useState<"manual" | "import">("manual");
+
   return (
     <div className="space-y-6">
       {/* Back link */}
@@ -26,12 +30,44 @@ export default function AdminExerciseCreatePage() {
           <span>New Practice Formulation</span>
         </h1>
         <p className="text-xs text-text-secondary mt-1">
-          Specify core metadata constraints to build your interactive exercise card.
+          Specify core metadata constraints or import a full quick test in seconds.
         </p>
       </div>
 
-      {/* Main Exercise Form */}
-      <AdminExerciseForm />
+      {/* Tabs Switch */}
+      <div className="flex border-b border-neutral-border gap-6">
+        <button
+          onClick={() => setActiveTab("manual")}
+          className={cn(
+            "pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2",
+            activeTab === "manual"
+              ? "border-primary text-primary"
+              : "border-transparent text-text-secondary hover:text-text-primary"
+          )}
+        >
+          <Edit3 className="h-4 w-4" />
+          <span>Manual Formulation</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("import")}
+          className={cn(
+            "pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2",
+            activeTab === "import"
+              ? "border-primary text-primary"
+              : "border-transparent text-text-secondary hover:text-text-primary"
+          )}
+        >
+          <Sparkles className="h-4 w-4 animate-pulse text-amber-400" />
+          <span>Quick Test Import</span>
+        </button>
+      </div>
+
+      {/* Tab Contents */}
+      {activeTab === "manual" ? (
+        <AdminExerciseForm />
+      ) : (
+        <QuickImportForm mode="full" />
+      )}
     </div>
   );
 }

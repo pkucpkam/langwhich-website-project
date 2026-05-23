@@ -22,6 +22,11 @@ The system isolates student-facing testing flows from administrative composition
 * Reordering updates the `sortOrder` integer.
 * Moving cards (Up/Down) performs a swift backend `PATCH /api/admin/questions/reorder` call transmitting the full array of sequential Question IDs. The backend loops through and updates `sort_order` transactionally, avoiding client-side state draft desyncs.
 
+### 1.4. Batch Question Importing (Nhập Bài Kiểm Tra Nhanh)
+* **Dual Parsing Engine**: Supports importing structured JSON configurations or AI-styled raw Markdown text strings. The custom client-side parsing utility (`parseQuickImportText`) identifies question prompts, splits choice options based on prefix tokens (A., B., C.), filters marked answers with asterisk symbols (`*`), extracts fill-in-the-blank keys, and captures grammar explanations.
+* **Metadata Resolution**: If importing in "full" mode, the parser extracts title, target difficulty, description, and estimated minutes to build the metadata package first.
+* **Sequential Database Syncing**: To avoid database row-lock collisions and preserve perfect question sorting ordering, the import workflow makes consecutive backend REST operations sequentially. The interface renders a real-time progress indicator representing parsed item synchronization.
+
 ---
 
 ## 2. State Management (Quản Lý Trạng Thái)
@@ -51,6 +56,14 @@ All admin endpoints undergo security authorization filtering before being execut
       ➔ [ExerciseSetRepository / ExerciseQuestionRepository] 
       ➔ [PostgreSQL DB]
 ```
+
+### 2.3. Quick Import Client State Flow
+The `QuickImportForm` manages temporary states for text input, parsed previews, step-by-step syncing, and real-time step counter logs:
+* `inputText: string` - Retains pasted markdown text or JSON.
+* `parsedData: ParsedImportData | null` - Holds parsed questions preview list.
+* `isImporting: boolean` - Triggers progress modal backdrop and overlay.
+* `importStep: number` - Increments sequential counter during REST calls.
+* `importLogs: string[]` - Records execution output representing success/error states of transactions.
 
 ---
 
@@ -110,4 +123,45 @@ sequenceDiagram
     Svc-->>Ctrl: Success
     Ctrl-->>Page: HTTP 200 OK
     Page-->>Admin: Render re-sorted list smoothly
+```
+
+---
+
+## 5. Mermaid Sequence Diagram: Quick Test Batch Import
+
+The diagram below maps the dynamic sequential execution flow for the Quick Import workflow:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Admin User
+    participant Page as QuickImportForm (FE)
+    participant Ctrl as AdminExerciseController (BE)
+    participant DB as PostgreSQL DB
+
+    Admin->>Page: Paste AI Text or JSON configuration
+    Admin->>Page: Click "Parse & Preview"
+    Page->>Page: Runs parseQuickImportText()
+    Page-->>Admin: Renders interactive parsed previews (metadata & questions list)
+    Admin->>Page: Click "Confirm & Save"
+    Page->>Page: Sets isImporting = true
+    
+    rect rgb(20, 25, 40)
+        Note over Page: Sequential REST Import Iterations
+        Page->>Ctrl: POST /api/admin/exercise-sets (Metadata payload)
+        Ctrl->>DB: INSERT into exercise_sets
+        DB-->>Ctrl: Saved Exercise Set (ID = 100)
+        Ctrl-->>Page: HTTP 201 Created (Set Details)
+        
+        loop For each Parsed Question in array
+            Page->>Ctrl: POST /api/admin/exercise-sets/100/questions (Question payload)
+            Ctrl->>DB: INSERT into exercise_questions & option tables
+            DB-->>Ctrl: Saved Question Entity
+            Ctrl-->>Page: HTTP 201 Created (Question details)
+            Page->>Page: Increment importStep & append to logs
+        end
+    end
+    
+    Page->>Page: Sets isImporting = false
+    Page-->>Admin: Shows "Import Successful" alert
 ```

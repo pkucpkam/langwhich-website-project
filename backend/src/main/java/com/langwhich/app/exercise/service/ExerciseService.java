@@ -13,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.jpa.domain.Specification;
+
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -48,7 +50,27 @@ public class ExerciseService {
 
     @Transactional(readOnly = true)
     public Page<ExerciseSetResponse> getExerciseSets(String topicSlug, Difficulty difficulty, String search, Pageable pageable) {
-        return exerciseSetRepository.filterExercises(topicSlug, difficulty, search, pageable)
+        Specification<ExerciseSet> spec = Specification.where(
+                (root, query, cb) -> cb.equal(root.get("isPublished"), true)
+        );
+
+        if (topicSlug != null && !topicSlug.trim().isEmpty()) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("topic").get("slug"), topicSlug));
+        }
+
+        if (difficulty != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("difficulty"), difficulty));
+        }
+
+        if (search != null && !search.trim().isEmpty()) {
+            String searchLower = "%" + search.trim().toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("title")), searchLower),
+                    cb.like(cb.lower(root.get("description")), searchLower)
+            ));
+        }
+
+        return exerciseSetRepository.findAll(spec, pageable)
                 .map(ExerciseSetResponse::fromEntity);
     }
 

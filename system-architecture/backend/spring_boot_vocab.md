@@ -16,8 +16,7 @@ backend/src/main/java/com/langwhich/app/
 ├── lesson/             # Quản lý Bài học (Lessons) & Từ vựng (Vocabulary Items)
 ├── folder/             # Thư mục hệ thống & Thư mục cá nhân của User
 ├── srs/                # Thuật toán Spaced Repetition (SM-2) & Thẻ SRS
-├── history/            # Lịch sử học tập & Session Tracker
-└── leaderboard/        # Tổng hợp bảng xếp hạng học viên
+└── history/            # Lịch sử học tập & Session Tracker
 ```
 
 ---
@@ -160,20 +159,7 @@ public SrsCard calculateNextReview(SrsCard card, int quality) {
 
 ---
 
-## 4. Bảng Xếp Hạng & Thống kê Hoạt động (Leaderboard & Stats Logic)
-
-### Thuật toán Leaderboard:
-Để khuyến khích người dùng học tập, hệ thống tính điểm dựa trên tổng thời gian học tập tích lũy (`total_time_spent`) trên tất cả các chế độ.
-* **SQL Query tối ưu**:
-
-```sql
-SELECT u.id, u.username, u.photo_url, SUM(s.time_spent) as total_time
-FROM users u
-JOIN study_sessions s ON u.id = s.user_id
-GROUP BY u.id, u.username, u.photo_url
-ORDER BY total_time DESC
-LIMIT 50;
-```
+## 4. Thống kê Hoạt động học tập (Study Activity Stats Logic)
 
 ### Luồng render Heatmap (GitHub-style Calendar):
 * Lấy lịch sử học tập hàng ngày của người dùng qua API `GET /api/v1/history/daily`.

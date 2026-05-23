@@ -12,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.jpa.domain.Specification;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +35,25 @@ public class AdminExerciseService {
             Boolean isPublished,
             Pageable pageable
     ) {
-        Page<ExerciseSet> sets = exerciseSetRepository.adminFilterExercises(search, difficulty, isPublished, pageable);
+        Specification<ExerciseSet> spec = Specification.where(null);
+
+        if (search != null && !search.trim().isEmpty()) {
+            String searchLower = "%" + search.trim().toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("title")), searchLower),
+                    cb.like(cb.lower(root.get("description")), searchLower)
+            ));
+        }
+
+        if (difficulty != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("difficulty"), difficulty));
+        }
+
+        if (isPublished != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("isPublished"), isPublished));
+        }
+
+        Page<ExerciseSet> sets = exerciseSetRepository.findAll(spec, pageable);
         return sets.map(ExerciseSetResponse::fromEntity);
     }
 

@@ -14,26 +14,4 @@ import org.springframework.stereotype.Repository;
 public interface ExerciseSetRepository extends JpaRepository<ExerciseSet, Long>, JpaSpecificationExecutor<ExerciseSet> {
     
     Page<ExerciseSet> findAllByIsPublishedTrue(Pageable pageable);
-    
-    @Query("SELECT s FROM ExerciseSet s WHERE s.isPublished = true AND " +
-           "(:topicSlug IS NULL OR s.topic.slug = :topicSlug) AND " +
-           "(:difficulty IS NULL OR s.difficulty = :difficulty) AND " +
-           "(:search IS NULL OR LOWER(s.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.description) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<ExerciseSet> filterExercises(
-        @Param("topicSlug") String topicSlug,
-        @Param("difficulty") Difficulty difficulty,
-        @Param("search") String search,
-        Pageable pageable
-    );
-
-    @Query("SELECT s FROM ExerciseSet s WHERE " +
-           "(:search IS NULL OR LOWER(s.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.description) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
-           "(:difficulty IS NULL OR s.difficulty = :difficulty) AND " +
-           "(:isPublished IS NULL OR s.isPublished = :isPublished)")
-    Page<ExerciseSet> adminFilterExercises(
-        @Param("search") String search,
-        @Param("difficulty") Difficulty difficulty,
-        @Param("isPublished") Boolean isPublished,
-        Pageable pageable
-    );
 }

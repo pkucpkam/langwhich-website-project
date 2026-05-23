@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Edit,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { exerciseApi } from "../api";
 import { theoryApi } from "@/api/theory.api";
@@ -23,6 +24,7 @@ import type { TheoryTopic } from "@/types/theory";
 import type { AdminQuestion, Difficulty, ExerciseType } from "../types";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+import { QuickImportForm } from "./QuickImportForm";
 
 interface AdminExerciseFormProps {
   setId?: number; // Present only in edit mode
@@ -52,6 +54,7 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
   // Questions builder states
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
   const [activeTab, setActiveTab] = useState<"metadata" | "questions">("metadata");
+  const [isImportingQuestions, setIsImportingQuestions] = useState(false);
 
   // Question Form States (for creating/updating a single question)
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null); // null = creating new
@@ -158,6 +161,7 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
     setActiveTab(tab);
     setFormError(null);
     setShowQuestionForm(false);
+    setIsImportingQuestions(false);
   };
 
   // Reorder questions on backend
@@ -548,22 +552,56 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
 
       {/* PRACTICE QUESTIONS BUILDER SECTION */}
       {isEditMode && activeTab === "questions" && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          
-          {/* Left Panel: Questions List */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-text-primary text-base">Questions Catalog</h3>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={startNewQuestion}
-                className="bg-primary hover:bg-primary-hover font-bold text-xs"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Add Question
-              </Button>
-            </div>
+        isImportingQuestions ? (
+          <div className="bg-neutral-card border border-neutral-border rounded-2xl p-6">
+            <QuickImportForm
+              mode="questions-only"
+              setId={setId}
+              onSuccess={async () => {
+                setIsImportingQuestions(false);
+                if (setId) {
+                  setLoading(true);
+                  try {
+                    const data = await exerciseApi.adminGetExerciseSetDetail(setId);
+                    setQuestions(data.questions || []);
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+              }}
+              onCancel={() => setIsImportingQuestions(false)}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            
+            {/* Left Panel: Questions List */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-text-primary text-base">Questions Catalog</h3>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsImportingQuestions(true)}
+                    className="border-primary text-primary hover:bg-primary/10 font-bold text-xs"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 mr-1 text-amber-400 animate-pulse" />
+                    Quick Import
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={startNewQuestion}
+                    className="bg-primary hover:bg-primary-hover font-bold text-xs"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Add Question
+                  </Button>
+                </div>
+              </div>
 
             {questions.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-neutral-border rounded-2xl bg-neutral-card/15 p-6 space-y-2">
@@ -884,20 +922,31 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
                 <p className="text-xs text-text-secondary max-w-sm mx-auto leading-relaxed">
                   Select an existing question card to modify, or click &quot;Add Question&quot; to build a new Multiple Choice or Fill-in-Blank grammar item.
                 </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={startNewQuestion}
-                  className="font-bold border-primary text-primary hover:bg-primary/10"
-                >
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  Add First Question Card
-                </Button>
+                <div className="flex justify-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsImportingQuestions(true)}
+                    className="font-bold border-primary text-primary hover:bg-primary/10"
+                  >
+                    <Sparkles className="h-4 w-4 mr-1.5 text-amber-400 animate-pulse" />
+                    Quick Import Questions
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={startNewQuestion}
+                    className="font-bold border-primary text-primary hover:bg-primary/10"
+                  >
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Add First Question Card
+                  </Button>
+                </div>
               </div>
             )}
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }

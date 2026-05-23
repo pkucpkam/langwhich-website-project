@@ -33,7 +33,7 @@ graph TD
 | Dịch vụ | Công nghệ chính | Nhiệm vụ | Database |
 | :--- | :--- | :--- | :--- |
 | **Frontend** | Next.js 16 (App Router), TypeScript, TailwindCSS, Zustand | Hiển thị giao diện, quản lý client state, xử lý logic tương tác (Flashcard, Quiz, Điền từ). | `localStorage` / Browser Cookies |
-| **Spring Boot Core** | Java, Spring Boot 3, Spring Security, JWT, JPA | Quản lý User Auth, Bài học từ vựng (Vocab), Thư mục (Folder), Tiến trình học (History), Bảng xếp hạng (Leaderboard) & Thuật toán SRS (SM-2). | PostgreSQL |
+| **Spring Boot Core** | Java, Spring Boot 3, Spring Security, JWT, JPA | Quản lý User Auth, Bài học từ vựng (Vocab), Thư mục (Folder), Tiến trình học (History) & Thuật toán SRS (SM-2). | PostgreSQL |
 | **NestJS Theory** | TypeScript, NestJS, Mongoose | Quản lý module TOEIC Theory (Lý thuyết), Topic lý thuyết, bài học lý thuyết, và tích hợp Rich Text Editor (Tiptap). | MongoDB |
 
 ---

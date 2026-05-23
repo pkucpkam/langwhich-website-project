@@ -115,13 +115,6 @@ export interface StudySessionRequest {
   totalCount: number;
 }
 
-// Leaderboard
-
-export interface LeaderboardEntry {
-  userId: number;
-  username: string;
-  totalTimeSpent: number;
-}
 
 // Pagination
 

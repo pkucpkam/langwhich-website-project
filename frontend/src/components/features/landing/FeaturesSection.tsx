@@ -4,7 +4,6 @@ import {
   BarChart3,
   Headphones,
   Target,
-  Trophy,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 
@@ -48,14 +47,6 @@ const features = [
       "Visual dashboards tracking your improvement over time. Understand exactly where to focus.",
     color: "text-cyan-400",
     bg: "bg-cyan-400/10",
-  },
-  {
-    icon: Trophy,
-    title: "Leaderboards",
-    description:
-      "Compete with other learners globally. Stay motivated and celebrate your milestones.",
-    color: "text-orange-400",
-    bg: "bg-orange-400/10",
   },
 ];
 
