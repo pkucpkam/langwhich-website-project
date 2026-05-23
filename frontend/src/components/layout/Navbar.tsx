@@ -32,6 +32,7 @@ export function Navbar() {
             : { href: "/dashboard", label: "Dashboard" },
           { href: "/vocab", label: "Vocabulary" },
           { href: "/theory", label: "Theory Lessons" },
+          { href: "/exercises", label: "Practice" },
         ]
       : [
           { href: "/theory", label: "Theory Lessons" },

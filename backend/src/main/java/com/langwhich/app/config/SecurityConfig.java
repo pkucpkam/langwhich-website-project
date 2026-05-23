@@ -46,6 +46,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/folders/{id}/lessons").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/leaderboard").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/theory/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/exercises").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/exercises/{id}").permitAll()
                 // Admin-only endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
