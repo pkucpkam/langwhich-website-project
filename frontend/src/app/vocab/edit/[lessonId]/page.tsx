@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { lessonsApi } from "@/api/lessons.api";
 import { foldersApi } from "@/api/folders.api";
+import { adminApi } from "@/api/admin.api";
 import { useAuthStore } from "@/store/auth.store";
 import type { Folder, VocabularyItemRequest } from "@/types/vocab";
 import { Plus, Trash2, Upload, ArrowLeft, Loader2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
+import { ImportModal } from "@/components/features/lessons/ImportModal";
 
 const EMPTY_ITEM: VocabularyItemRequest = {
   word: "",
@@ -24,7 +26,6 @@ export default function EditLessonPage() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -35,6 +36,7 @@ export default function EditLessonPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const fetchLesson = useCallback(async () => {
     try {
@@ -67,14 +69,17 @@ export default function EditLessonPage() {
   useEffect(() => {
     const init = async () => {
       setLoading(true);
+      const foldersPromise = user?.role === "ADMIN"
+        ? adminApi.getOfficialFolders()
+        : foldersApi.getMyFolders();
       await Promise.all([
         fetchLesson(),
-        foldersApi.getMyFolders().then(setFolders).catch(() => {}),
+        foldersPromise.then(setFolders).catch(() => {}),
       ]);
       setLoading(false);
     };
     init();
-  }, [fetchLesson]);
+  }, [fetchLesson, user]);
 
   const addItem = () => {
     setItems([...items, { ...EMPTY_ITEM }]);
@@ -86,38 +91,6 @@ export default function EditLessonPage() {
 
   const updateItem = (idx: number, field: keyof VocabularyItemRequest, value: string) => {
     setItems(items.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
-  };
-
-  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const XLSX = await import("xlsx");
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][];
-
-      const imported: VocabularyItemRequest[] = rows
-        .filter((row) => row[0] && row[1])
-        .map((row) => ({
-          word: row[0] ?? "",
-          definition: row[1] ?? "",
-          ipa: row[2] ?? "",
-          wordType: row[3] ?? "",
-          exampleEn: row[4] ?? "",
-          exampleVi: row[5] ?? "",
-        }));
-
-      if (imported.length > 0) {
-        setItems(imported);
-      }
-    } catch {
-      alert("Failed to parse Excel file. Make sure it's a valid .xlsx file.");
-    }
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const validate = () => {
@@ -162,17 +135,36 @@ export default function EditLessonPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Link
-          href={`/vocab/lessons/${lessonId}`}
-          className="p-2 rounded-xl border border-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB]"
-          id="edit-lesson-back"
-        >
-          <ArrowLeft size={18} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-[#F9FAFB]">Edit Study Set</h1>
-          <p className="text-sm text-[#9CA3AF]">Modify vocabulary words and details</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/vocab/lessons/${lessonId}`}
+            className="p-2 rounded-xl border border-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB]"
+            id="edit-lesson-back"
+          >
+            <ArrowLeft size={18} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-[#F9FAFB]">Edit Study Set</h1>
+            <p className="text-sm text-[#9CA3AF]">Modify vocabulary words and details</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Link href={`/vocab/lessons/${lessonId}`}>
+            <Button variant="outline" type="button" id="edit-lesson-cancel-top">
+              Cancel
+            </Button>
+          </Link>
+          <Button
+            type="submit"
+            form="edit-lesson-form"
+            variant="primary"
+            isLoading={submitting}
+            id="edit-lesson-submit-top"
+          >
+            Save Changes
+          </Button>
         </div>
       </div>
 
@@ -248,22 +240,14 @@ export default function EditLessonPage() {
               <p className="text-xs text-[#9CA3AF]">{items.length} words</p>
             </div>
             <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleExcelImport}
-                className="hidden"
-                id="excel-import-input"
-              />
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1F2937] text-xs text-[#9CA3AF] hover:text-[#F9FAFB] hover:border-[#2563EB]/50 transition-all"
-                id="edit-lesson-import-excel"
+                onClick={() => setImportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1F2937] text-xs text-[#9CA3AF] hover:text-[#F9FAFB] hover:border-[#2563EB]/50 transition-all font-medium"
+                id="edit-lesson-import-btn"
               >
                 <Upload size={13} />
-                Import Excel
+                Quick Import
               </button>
               <button
                 type="button"
@@ -389,24 +373,13 @@ export default function EditLessonPage() {
         {errors.submit && (
           <p className="text-sm text-red-400 mb-4">{errors.submit}</p>
         )}
-
-        {/* Submit */}
-        <div className="flex gap-3 justify-end">
-          <Link href={`/vocab/lessons/${lessonId}`}>
-            <Button variant="outline" type="button" id="edit-lesson-cancel">
-              Cancel
-            </Button>
-          </Link>
-          <Button
-            type="submit"
-            variant="primary"
-            isLoading={submitting}
-            id="edit-lesson-submit"
-          >
-            Save Changes
-          </Button>
-        </div>
       </form>
+
+      <ImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImport={(importedItems) => setItems(importedItems)}
+      />
     </div>
   );
 }

@@ -1,8 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useAuthStore } from "@/store/auth.store";
 
 export function CtaSection() {
+  const { isAuthenticated } = useAuthStore();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const startHref = isMounted && isAuthenticated ? "/dashboard" : "/auth/register";
+  const startText = isMounted && isAuthenticated ? "Go to Dashboard" : "Start Learning Free";
+
   return (
     <section className="py-24 px-6">
       <div className="max-w-4xl mx-auto text-center relative">
@@ -16,9 +30,9 @@ export function CtaSection() {
             Start free today — no credit card needed.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link href="/auth/register">
+            <Link href={startHref}>
               <Button variant="primary" size="lg" id="cta-bottom-start">
-                Start Learning Free
+                {startText}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>

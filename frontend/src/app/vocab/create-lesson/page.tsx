@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { lessonsApi } from "@/api/lessons.api";
 import { foldersApi } from "@/api/folders.api";
@@ -9,7 +9,7 @@ import { Plus, Trash2, Upload, ArrowLeft, Loader2, GripVertical } from "lucide-r
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
-import { useEffect } from "react";
+import { ImportModal } from "@/components/features/lessons/ImportModal";
 
 const EMPTY_ITEM: VocabularyItemRequest = {
   word: "",
@@ -22,7 +22,6 @@ const EMPTY_ITEM: VocabularyItemRequest = {
 
 export default function CreateLessonPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -32,6 +31,7 @@ export default function CreateLessonPage() {
   const [items, setItems] = useState<VocabularyItemRequest[]>([{ ...EMPTY_ITEM }]);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
     foldersApi.getMyFolders().then(setFolders).catch(() => {});
@@ -47,40 +47,6 @@ export default function CreateLessonPage() {
 
   const updateItem = (idx: number, field: keyof VocabularyItemRequest, value: string) => {
     setItems(items.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
-  };
-
-  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Dynamic import XLSX
-    try {
-      const XLSX = await import("xlsx");
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][];
-
-      const imported: VocabularyItemRequest[] = rows
-        .filter((row) => row[0] && row[1])
-        .map((row) => ({
-          word: row[0] ?? "",
-          definition: row[1] ?? "",
-          ipa: row[2] ?? "",
-          wordType: row[3] ?? "",
-          exampleEn: row[4] ?? "",
-          exampleVi: row[5] ?? "",
-        }));
-
-      if (imported.length > 0) {
-        setItems(imported);
-      }
-    } catch {
-      alert("Failed to parse Excel file. Make sure it's a valid .xlsx file.");
-    }
-
-    // Reset file input
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const validate = () => {
@@ -117,13 +83,32 @@ export default function CreateLessonPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Link href="/vocab" className="p-2 rounded-xl border border-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB]" id="create-lesson-back">
-          <ArrowLeft size={18} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-[#F9FAFB]">Create New Lesson</h1>
-          <p className="text-sm text-[#9CA3AF]">Add vocabulary words and save as a study set</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <Link href="/vocab" className="p-2 rounded-xl border border-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB]" id="create-lesson-back">
+            <ArrowLeft size={18} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-[#F9FAFB]">Create New Lesson</h1>
+            <p className="text-sm text-[#9CA3AF]">Add vocabulary words and save as a study set</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Link href="/vocab">
+            <Button variant="outline" type="button" id="create-lesson-cancel-top">
+              Cancel
+            </Button>
+          </Link>
+          <Button
+            type="submit"
+            form="create-lesson-form"
+            variant="primary"
+            isLoading={submitting}
+            id="create-lesson-submit-top"
+          >
+            Create Lesson
+          </Button>
         </div>
       </div>
 
@@ -199,22 +184,14 @@ export default function CreateLessonPage() {
               <p className="text-xs text-[#9CA3AF]">{items.length} words</p>
             </div>
             <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleExcelImport}
-                className="hidden"
-                id="excel-import-input"
-              />
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1F2937] text-xs text-[#9CA3AF] hover:text-[#F9FAFB] hover:border-[#2563EB]/50 transition-all"
-                id="create-lesson-import-excel"
+                onClick={() => setImportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1F2937] text-xs text-[#9CA3AF] hover:text-[#F9FAFB] hover:border-[#2563EB]/50 transition-all font-medium"
+                id="create-lesson-import-btn"
               >
                 <Upload size={13} />
-                Import Excel
+                Quick Import
               </button>
               <button
                 type="button"
@@ -340,24 +317,13 @@ export default function CreateLessonPage() {
         {errors.submit && (
           <p className="text-sm text-red-400 mb-4">{errors.submit}</p>
         )}
-
-        {/* Submit */}
-        <div className="flex gap-3 justify-end">
-          <Link href="/vocab">
-            <Button variant="outline" type="button" id="create-lesson-cancel">
-              Cancel
-            </Button>
-          </Link>
-          <Button
-            type="submit"
-            variant="primary"
-            isLoading={submitting}
-            id="create-lesson-submit"
-          >
-            Create Lesson
-          </Button>
-        </div>
       </form>
+
+      <ImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImport={(importedItems) => setItems(importedItems)}
+      />
     </div>
   );
 }

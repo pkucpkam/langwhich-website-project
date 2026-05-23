@@ -15,10 +15,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!isAuthenticated) {
       router.replace("/auth/login");
+    } else if (user?.role === "ADMIN") {
+      router.replace("/admin");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router]);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || user?.role === "ADMIN") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -61,6 +61,15 @@ public class AdminController {
         return ResponseEntity.ok(lessonService.createOfficialLesson(request, admin));
     }
 
+    @DeleteMapping("/lessons/{id}")
+    public ResponseEntity<Void> deleteLesson(
+        @PathVariable Long id,
+        @AuthenticationPrincipal User admin
+    ) {
+        lessonService.deleteLesson(id, admin);
+        return ResponseEntity.noContent().build();
+    }
+
     // ===== FOLDERS =====
 
     @GetMapping("/folders")
@@ -75,6 +84,7 @@ public class AdminController {
     ) {
         return ResponseEntity.ok(folderService.createOfficialFolder(request, admin));
     }
+
 
     // ===== LEADERBOARD =====
 

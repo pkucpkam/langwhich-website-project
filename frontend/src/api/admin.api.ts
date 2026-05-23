@@ -24,6 +24,10 @@ export const adminApi = {
     return data;
   },
 
+  deleteLesson: async (id: number): Promise<void> => {
+    await vocabApiClient.delete(`/admin/lessons/${id}`);
+  },
+
   getOfficialFolders: async (): Promise<Folder[]> => {
     const { data } = await vocabApiClient.get("/admin/folders");
     return data;

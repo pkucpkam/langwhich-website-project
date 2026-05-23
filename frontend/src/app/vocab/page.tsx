@@ -5,15 +5,15 @@ import { useAuthStore } from "@/store/auth.store";
 import { lessonsApi } from "@/api/lessons.api";
 import { foldersApi } from "@/api/folders.api";
 import { historyApi } from "@/api/history.api";
-import { ActivityHeatmap } from "@/components/features/home/ActivityHeatmap";
 import { FolderCard } from "@/components/features/folders/FolderCard";
 import { LessonCard } from "@/components/features/lessons/LessonCard";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import type { Lesson, Folder, PaginatedResponse } from "@/types/vocab";
-import { Search, Plus, Loader2 } from "lucide-react";
+import { Search, Plus, Loader2, Sparkles, Brain } from "lucide-react";
 import Link from "next/link";
 import { useDebounce } from "@/hooks/useDebounce";
+import { Button } from "@/components/ui/Button";
 
 export default function VocabHomePage() {
   const { user } = useAuthStore();
@@ -49,8 +49,8 @@ export default function VocabHomePage() {
       setLoading(true);
       await Promise.all([
         fetchLessons(),
-        foldersApi.getOfficialFolders().then(setFolders).catch(() => {}),
-        historyApi.getDailyActivity().then(setHeatmapData).catch(() => {}),
+        foldersApi.getOfficialFolders().then(setFolders).catch(() => { }),
+        historyApi.getDailyActivity().then(setHeatmapData).catch(() => { }),
       ]);
       setLoading(false);
     };
@@ -86,10 +86,35 @@ export default function VocabHomePage() {
 
   return (
     <>
-      {/* Activity Heatmap */}
-      <div className="mb-8">
-        <ActivityHeatmap data={heatmapData} />
-      </div>
+      {/* Hero Banner Section */}
+      <section className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#2563EB]/20 via-[#111827] to-[#0B1220] border border-[#1F2937] p-8 md:p-12 text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8 mb-8 animate-fade-in">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#2563EB]/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+        <div className="space-y-4 max-w-xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#2563EB]/25 text-[#DBEAFE] border border-[#2563EB]/30">
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <span>Spaced Repetition System (SRS)</span>
+          </div>
+          <h1 className="text-4xl font-extrabold text-[#F9FAFB] tracking-tight leading-tight md:text-5xl">
+            Supercharge Your TOEIC Vocabulary
+          </h1>
+          <p className="text-base text-[#9CA3AF] leading-relaxed">
+            Master thousands of TOEIC key terms through scientifically proven spaced repetition card reviews. 
+            Retain more information in less time with optimized learning sequences.
+          </p>
+          <div className="pt-2 flex flex-wrap gap-3 justify-center md:justify-start">
+            <Link href="/vocab/srs-review">
+              <Button variant="primary">Start SRS Reviews</Button>
+            </Link>
+            <Link href="/vocab/create-lesson">
+              <Button variant="outline">Create Lesson</Button>
+            </Link>
+          </div>
+        </div>
+        <div className="hidden lg:flex w-72 h-72 items-center justify-center bg-[#2563EB]/5 border border-[#2563EB]/10 rounded-3xl p-6 relative">
+          <div className="absolute inset-0 bg-[#2563EB]/10 blur-xl opacity-20" />
+          <Brain className="h-40 w-40 text-[#2563EB] animate-pulse-slow" />
+        </div>
+      </section>
 
       {/* Official Folders */}
       {folders.length > 0 && (
