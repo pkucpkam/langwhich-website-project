@@ -24,8 +24,6 @@ public class AdminExerciseService {
 
     private final ExerciseSetRepository exerciseSetRepository;
     private final ExerciseQuestionRepository exerciseQuestionRepository;
-    private final QuestionOptionRepository questionOptionRepository;
-    private final QuestionAnswerRepository questionAnswerRepository;
     private final TheoryTopicRepository theoryTopicRepository;
 
     @Transactional(readOnly = true)
