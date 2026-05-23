@@ -8,6 +8,10 @@ import type {
   SubmitAttemptResponse,
   AttemptReview,
   ActiveAttemptResponse,
+  AdminQuestion,
+  AdminExerciseSetDetail,
+  AdminExerciseSetRequest,
+  AdminQuestionRequest,
 } from "../types";
 
 export interface PaginationResponse<T> {
@@ -81,6 +85,74 @@ export const exerciseApi = {
       `/exercises/attempts/${attemptId}/review`
     );
     return response.data;
+  },
+
+  // ===== ADMIN APIS =====
+
+  adminGetExerciseSets: async (params?: {
+    search?: string;
+    difficulty?: string;
+    isPublished?: boolean;
+    page?: number;
+    size?: number;
+  }): Promise<PaginationResponse<ExerciseSet>> => {
+    const response = await vocabApiClient.get<PaginationResponse<ExerciseSet>>(
+      "/admin/exercise-sets",
+      { params }
+    );
+    return response.data;
+  },
+
+  adminGetExerciseSetDetail: async (id: number): Promise<AdminExerciseSetDetail> => {
+    const response = await vocabApiClient.get<AdminExerciseSetDetail>(`/admin/exercise-sets/${id}`);
+    return response.data;
+  },
+
+  adminCreateExerciseSet: async (data: AdminExerciseSetRequest): Promise<ExerciseSet> => {
+    const response = await vocabApiClient.post<ExerciseSet>("/admin/exercise-sets", data);
+    return response.data;
+  },
+
+  adminUpdateExerciseSet: async (id: number, data: AdminExerciseSetRequest): Promise<ExerciseSet> => {
+    const response = await vocabApiClient.put<ExerciseSet>(`/admin/exercise-sets/${id}`, data);
+    return response.data;
+  },
+
+  adminDeleteExerciseSet: async (id: number): Promise<void> => {
+    await vocabApiClient.delete(`/admin/exercise-sets/${id}`);
+  },
+
+  adminPublishExerciseSet: async (id: number, publish: boolean): Promise<ExerciseSet> => {
+    const response = await vocabApiClient.patch<ExerciseSet>(
+      `/admin/exercise-sets/${id}/publish`,
+      null,
+      { params: { publish } }
+    );
+    return response.data;
+  },
+
+  adminCreateQuestion: async (setId: number, data: AdminQuestionRequest): Promise<AdminQuestion> => {
+    const response = await vocabApiClient.post<AdminQuestion>(
+      `/admin/exercise-sets/${setId}/questions`,
+      data
+    );
+    return response.data;
+  },
+
+  adminUpdateQuestion: async (questionId: number, data: AdminQuestionRequest): Promise<AdminQuestion> => {
+    const response = await vocabApiClient.put<AdminQuestion>(
+      `/admin/questions/${questionId}`,
+      data
+    );
+    return response.data;
+  },
+
+  adminDeleteQuestion: async (questionId: number): Promise<void> => {
+    await vocabApiClient.delete(`/admin/questions/${questionId}`);
+  },
+
+  adminReorderQuestions: async (questionIds: number[]): Promise<void> => {
+    await vocabApiClient.patch("/admin/questions/reorder", { questionIds });
   },
 };
 export default exerciseApi;

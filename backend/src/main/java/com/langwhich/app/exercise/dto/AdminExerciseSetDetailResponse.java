@@ -2,13 +2,19 @@ package com.langwhich.app.exercise.dto;
 
 import com.langwhich.app.exercise.entity.ExerciseSet;
 import com.langwhich.app.theory.Difficulty;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ExerciseSetResponse {
+public class AdminExerciseSetDetailResponse {
     private Long id;
     private String title;
     private String description;
@@ -19,12 +25,11 @@ public class ExerciseSetResponse {
     private int estimatedMinutes;
     private String thumbnailUrl;
     private boolean isPublished;
-    private int questionCount;
-    private String createdAt;
+    private List<AdminQuestionResponse> questions;
 
-    public static ExerciseSetResponse fromEntity(ExerciseSet set) {
+    public static AdminExerciseSetDetailResponse fromEntity(ExerciseSet set) {
         if (set == null) return null;
-        return ExerciseSetResponse.builder()
+        return AdminExerciseSetDetailResponse.builder()
             .id(set.getId())
             .title(set.getTitle())
             .description(set.getDescription())
@@ -35,8 +40,10 @@ public class ExerciseSetResponse {
             .estimatedMinutes(set.getEstimatedMinutes())
             .thumbnailUrl(set.getThumbnailUrl())
             .isPublished(set.isPublished())
-            .questionCount(set.getQuestions() != null ? set.getQuestions().size() : 0)
-            .createdAt(set.getCreatedAt() != null ? set.getCreatedAt().toString() : null)
+            .questions(set.getQuestions() != null ? 
+                set.getQuestions().stream()
+                    .map(AdminQuestionResponse::fromEntity)
+                    .collect(Collectors.toList()) : null)
             .build();
     }
 }

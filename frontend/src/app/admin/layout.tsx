@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Lock,
+  Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +76,13 @@ export default function AdminLayout({
       desc: "Manage guides & collections",
     },
     {
+      href: "/admin/exercises",
+      activeTab: "exercises",
+      label: "Exercise Hub",
+      icon: Award,
+      desc: "Manage practice worksheets",
+    },
+    {
       href: "/admin?tab=users",
       activeTab: "users",
       label: "User Directory",
@@ -101,6 +109,7 @@ export default function AdminLayout({
             const isTabActive = pathname.startsWith("/admin") && (
               (link.activeTab === "vocab" && pathname === "/admin" && (!window.location.search || window.location.search.includes("tab=vocab"))) ||
               (link.activeTab === "theory" && pathname.startsWith("/admin/theory")) ||
+              (link.activeTab === "exercises" && pathname.startsWith("/admin/exercises")) ||
               (link.activeTab === "users" && pathname === "/admin" && window.location.search.includes("tab=users"))
             );
             return (
@@ -196,6 +205,7 @@ export default function AdminLayout({
             const isTabActive = pathname.startsWith("/admin") && (
               (link.activeTab === "vocab" && pathname === "/admin" && (!window.location.search || window.location.search.includes("tab=vocab"))) ||
               (link.activeTab === "theory" && pathname.startsWith("/admin/theory")) ||
+              (link.activeTab === "exercises" && pathname.startsWith("/admin/exercises")) ||
               (link.activeTab === "users" && pathname === "/admin" && window.location.search.includes("tab=users"))
             );
             return (

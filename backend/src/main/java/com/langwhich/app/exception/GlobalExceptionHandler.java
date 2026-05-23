@@ -31,6 +31,12 @@ public class GlobalExceptionHandler {
                 ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "Validation failed", errors));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(
+                ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), null));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(

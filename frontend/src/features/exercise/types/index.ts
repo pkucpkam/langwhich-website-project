@@ -20,6 +20,7 @@ export interface ExerciseSet {
   thumbnailUrl?: string;
   isPublished: boolean;
   questionCount: number;
+  createdAt?: string;
 }
 
 export interface QuestionOption {
@@ -121,4 +122,46 @@ export interface ActiveAttemptResponse {
   startedAt: string;
   questions: Question[];
   savedAnswers: SavedAnswer[];
+}
+
+export interface AdminQuestionOption {
+  id?: number;
+  optionText: string;
+  isCorrect: boolean;
+  sortOrder: number;
+}
+
+export interface AdminQuestion {
+  id: number;
+  type: ExerciseType;
+  questionText: string;
+  explanation?: string;
+  points: number;
+  sortOrder: number;
+  options?: AdminQuestionOption[];
+  correctAnswers?: string[];
+}
+
+export interface AdminExerciseSetDetail extends Omit<ExerciseSet, "questionCount"> {
+  questions: AdminQuestion[];
+}
+
+export interface AdminExerciseSetRequest {
+  title: string;
+  description?: string;
+  topicId?: number | null;
+  difficulty: Difficulty;
+  estimatedMinutes: number;
+  thumbnailUrl?: string;
+  isPublished: boolean;
+}
+
+export interface AdminQuestionRequest {
+  type: ExerciseType;
+  questionText: string;
+  explanation?: string;
+  points: number;
+  sortOrder: number;
+  options?: AdminQuestionOption[];
+  correctAnswers?: string[];
 }

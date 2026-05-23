@@ -25,4 +25,15 @@ public interface ExerciseSetRepository extends JpaRepository<ExerciseSet, Long>,
         @Param("search") String search,
         Pageable pageable
     );
+
+    @Query("SELECT s FROM ExerciseSet s WHERE " +
+           "(:search IS NULL OR LOWER(s.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.description) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "(:difficulty IS NULL OR s.difficulty = :difficulty) AND " +
+           "(:isPublished IS NULL OR s.isPublished = :isPublished)")
+    Page<ExerciseSet> adminFilterExercises(
+        @Param("search") String search,
+        @Param("difficulty") Difficulty difficulty,
+        @Param("isPublished") Boolean isPublished,
+        Pageable pageable
+    );
 }
