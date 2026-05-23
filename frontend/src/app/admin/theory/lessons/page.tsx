@@ -18,12 +18,27 @@ import {
 import { theoryApi } from "@/api/theory.api";
 import type { TheoryLesson, Difficulty } from "@/types/theory";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/lib/utils";
 
 export default function AdminLessonsPage() {
   const [lessons, setLessons] = useState<TheoryLesson[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Modal states
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    variant: "success" | "error";
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    variant: "success",
+  });
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,18 +77,8 @@ export default function AdminLessonsPage() {
     setCurrentPage(0);
   }, [debouncedSearch, selectedDifficulty]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to permanently delete this lesson? This action is irreversible.")) {
-      return;
-    }
-
-    try {
-      await theoryApi.deleteLesson(id);
-      await loadLessons();
-    } catch (error) {
-      console.error("Failed to delete lesson", error);
-      alert("Error deleting lesson.");
-    }
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
   };
 
   const getDifficultyColor = (diff: Difficulty) => {
@@ -288,6 +293,46 @@ export default function AdminLessonsPage() {
           </Button>
         </div>
       )}
+      {/* Reusable Modals */}
+      <Modal
+        isOpen={deleteId !== null}
+        title="Delete Lesson"
+        description="Are you sure you want to permanently delete this lesson? This action is irreversible."
+        variant="danger"
+        confirmLabel="Delete Lesson"
+        onConfirm={async () => {
+          if (deleteId === null) return;
+          try {
+            await theoryApi.deleteLesson(deleteId);
+            await loadLessons();
+            setAlertConfig({
+              isOpen: true,
+              title: "Lesson Deleted",
+              description: "The lesson has been successfully deleted.",
+              variant: "success",
+            });
+          } catch (error) {
+            console.error("Failed to delete lesson", error);
+            setAlertConfig({
+              isOpen: true,
+              title: "Deletion Failed",
+              description: "Error deleting lesson. Please try again.",
+              variant: "error",
+            });
+          } finally {
+            setDeleteId(null);
+          }
+        }}
+        onClose={() => setDeleteId(null)}
+      />
+
+      <Modal
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        variant={alertConfig.variant}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

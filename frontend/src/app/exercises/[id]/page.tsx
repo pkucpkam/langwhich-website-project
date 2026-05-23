@@ -10,7 +10,8 @@ import { ExerciseNavigation } from "@/features/exercise/components/ExerciseNavig
 import { QuestionPalette } from "@/features/exercise/components/QuestionPalette";
 import { QuestionRenderer } from "@/features/exercise/components/QuestionRenderer";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, XCircle, ChevronRight, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function PracticeSessionPage() {
   const params = useParams();
@@ -30,6 +31,11 @@ export default function PracticeSessionPage() {
   const clearPractice = usePracticeStore((state) => state.clearPractice);
   const setTimer = usePracticeStore((state) => state.setTimer);
 
+  const practiceMode = usePracticeStore((state) => state.practiceMode);
+  const checkedQuestions = usePracticeStore((state) => state.checkedQuestions);
+  const setPracticeMode = usePracticeStore((state) => state.setPracticeMode);
+  const markQuestionAsChecked = usePracticeStore((state) => state.markQuestionAsChecked);
+
   // Background Autosaving
   const { isAutosaving } = useAutosave();
 
@@ -39,6 +45,7 @@ export default function PracticeSessionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [checkingQuestionId, setCheckingQuestionId] = useState<number | null>(null);
 
   useEffect(() => {
     const id = attemptId;
@@ -74,13 +81,22 @@ export default function PracticeSessionPage() {
         // Set duration recovery if any
         // In this implementation, time is stored in local storage, so timer is preserved!
 
-        // Restore previously synced answers
+        // Restore previously synced answers and checked status
         attemptData.savedAnswers.forEach((ans) => {
           updateAnswer(ans.questionId, {
             selectedOptionId: ans.selectedOptionId,
             textAnswer: ans.textAnswer,
           });
           markAsSaved(ans.questionId, true);
+
+          if (ans.isCorrect !== undefined && ans.isCorrect !== null) {
+            markQuestionAsChecked(ans.questionId, {
+              isCorrect: ans.isCorrect,
+              explanation: ans.explanation,
+              correctOptionId: ans.correctOptionId,
+              correctAnswers: ans.correctAnswers,
+            });
+          }
         });
 
       } catch (err: any) {
@@ -92,7 +108,7 @@ export default function PracticeSessionPage() {
     }
 
     loadAttempt();
-  }, [attemptId, initPractice, updateAnswer, markAsSaved, router]);
+  }, [attemptId, initPractice, updateAnswer, markAsSaved, markQuestionAsChecked, router]);
 
   if (loading) {
     return (
@@ -127,6 +143,13 @@ export default function PracticeSessionPage() {
 
   const questions = storeSet.questions;
   const currentQuestion = questions[storeIndex];
+
+  const currentAnswer = answers[currentQuestion.id];
+  const hasProvidedAnswer = !!(
+    currentAnswer &&
+    ((currentAnswer.selectedOptionId !== null && currentAnswer.selectedOptionId !== undefined) ||
+      (currentAnswer.textAnswer !== null && currentAnswer.textAnswer !== undefined && currentAnswer.textAnswer.trim() !== ""))
+  );
 
   // Compute total answered questions
   const answeredCount = Object.keys(answers).filter((qIdStr) => {
@@ -188,6 +211,34 @@ export default function PracticeSessionPage() {
     }
   };
 
+  const handleCheckQuestion = async (questionId: number) => {
+    if (!attemptId) return;
+    const ans = answers[questionId];
+    if (!ans) return;
+
+    try {
+      setCheckingQuestionId(questionId);
+      const res = await exerciseApi.saveAnswer(attemptId, {
+        questionId,
+        selectedOptionId: ans.selectedOptionId,
+        textAnswer: ans.textAnswer,
+      });
+
+      markQuestionAsChecked(questionId, {
+        isCorrect: res.isCorrect ?? false,
+        explanation: res.explanation,
+        correctOptionId: res.correctOptionId,
+        correctAnswers: res.correctAnswers,
+      });
+      markAsSaved(questionId, true);
+    } catch (err) {
+      console.error("Failed to check question:", err);
+      alert("Không thể kiểm tra đáp án. Vui lòng thử lại!");
+    } finally {
+      setCheckingQuestionId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-background flex flex-col justify-between">
       {/* Session Header */}
@@ -219,18 +270,141 @@ export default function PracticeSessionPage() {
             selectedOptionId={answers[currentQuestion.id]?.selectedOptionId}
             textAnswer={answers[currentQuestion.id]?.textAnswer}
             onChange={handleAnswerChange}
+            checkedFeedback={checkedQuestions[currentQuestion.id]}
           />
+
+          {/* INSTANT CHECK CONTROLS */}
+          {practiceMode === "INSTANT" && (
+            <div className="bg-neutral-card border border-neutral-border rounded-xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+              {checkedQuestions[currentQuestion.id] ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    {checkedQuestions[currentQuestion.id].isCorrect ? (
+                      <div className="h-10 w-10 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center border border-green-500/20">
+                        <CheckCircle2 className="h-6 w-6" />
+                      </div>
+                    ) : (
+                      <div className="h-10 w-10 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center border border-red-500/20">
+                        <XCircle className="h-6 w-6" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-bold text-text-primary">
+                        {checkedQuestions[currentQuestion.id].isCorrect
+                          ? "Chính xác! Bạn đã hoàn thành câu hỏi này."
+                          : "Chưa chính xác! Xem giải thích bên dưới."}
+                      </p>
+                      <p className="text-xs text-text-secondary mt-0.5">
+                        {checkedQuestions[currentQuestion.id].isCorrect
+                          ? `Chúc mừng! Bạn nhận được +${currentQuestion.points} điểm.`
+                          : "Đừng nản lòng, hãy cố gắng ở câu tiếp theo!"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {storeIndex < questions.length - 1 ? (
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 cursor-pointer animate-pulse"
+                    >
+                      <span>Câu tiếp theo</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSubmitAttempt}
+                      className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>Nộp bài & Kết thúc</span>
+                      <Check className="h-4 w-4" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="text-xs text-text-secondary leading-relaxed max-w-md">
+                    Chọn đáp án của bạn ở trên và nhấn nút kiểm tra để xem kết quả ngay lập tức!
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCheckQuestion(currentQuestion.id)}
+                    disabled={checkingQuestionId === currentQuestion.id || !hasProvidedAnswer}
+                    className={cn(
+                      "w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-200",
+                      hasProvidedAnswer
+                        ? "bg-primary hover:bg-primary-hover text-white cursor-pointer"
+                        : "bg-neutral-border text-text-secondary cursor-not-allowed border border-neutral-border"
+                    )}
+                  >
+                    {checkingQuestionId === currentQuestion.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Đang kiểm tra...</span>
+                      </>
+                    ) : (
+                      <span>Kiểm tra đáp án</span>
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Side: Sidebar Navigation Palette */}
         <div className="lg:col-span-1">
           <div className="sticky top-28 space-y-6">
+            
+            {/* Practice Mode Selector */}
+            <div className="bg-neutral-card border border-neutral-border rounded-xl p-5 shadow-sm space-y-3">
+              <h4 className="font-bold text-text-primary uppercase tracking-wider text-xs">
+                Chế độ làm bài
+              </h4>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPracticeMode("ALL_AT_ONCE")}
+                  className={cn(
+                    "w-full py-2.5 px-3 rounded-xl text-xs font-bold border transition-all duration-200 text-left cursor-pointer flex items-center justify-between",
+                    practiceMode === "ALL_AT_ONCE"
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-neutral-background border-neutral-border text-text-secondary hover:text-text-primary hover:border-text-secondary"
+                  )}
+                >
+                  <span>Nộp bài rồi check</span>
+                  {practiceMode === "ALL_AT_ONCE" && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPracticeMode("INSTANT")}
+                  className={cn(
+                    "w-full py-2.5 px-3 rounded-xl text-xs font-bold border transition-all duration-200 text-left cursor-pointer flex items-center justify-between",
+                    practiceMode === "INSTANT"
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-neutral-background border-neutral-border text-text-secondary hover:text-text-primary hover:border-text-secondary"
+                  )}
+                >
+                  <span>Làm tới đâu check tới đó</span>
+                  {practiceMode === "INSTANT" && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-text-secondary leading-relaxed">
+                {practiceMode === "INSTANT"
+                  ? "Hệ thống sẽ chấm điểm và hiển thị giải thích chi tiết ngay lập tức sau khi kiểm tra mỗi câu."
+                  : "Bạn có thể tự do thay đổi đáp án và chỉ xem điểm số, giải thích chi tiết sau khi nộp bài."}
+              </p>
+            </div>
+
             <QuestionPalette
               questions={questions}
               currentIndex={storeIndex}
               onSelect={setQuestionIndex}
               answers={answers}
               savedAnswers={savedAnswers}
+              practiceMode={practiceMode}
+              checkedQuestions={checkedQuestions}
             />
 
             <div className="bg-neutral-card border border-neutral-border rounded-xl p-5 shadow-sm text-xs text-text-secondary leading-relaxed">

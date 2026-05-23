@@ -20,7 +20,7 @@ import type { ExerciseSet, Difficulty } from "@/features/exercise/types";
 import { Button } from "@/components/ui/Button";
 import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/lib/utils";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Modal } from "@/components/ui/Modal";
 
 export default function AdminExercisesPage() {
   const [exercises, setExercises] = useState<ExerciseSet[]>([]);
@@ -42,6 +42,18 @@ export default function AdminExercisesPage() {
   const [previewSetId, setPreviewSetId] = useState<number | null>(null);
   const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    variant: "success" | "error";
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    variant: "success",
+  });
 
   const loadExercises = useCallback(async () => {
     setLoading(true);
@@ -81,9 +93,20 @@ export default function AdminExercisesPage() {
       setExercises((prev) =>
         prev.map((ex) => (ex.id === id ? { ...ex, isPublished: !currentPublish } : ex))
       );
+      setAlertConfig({
+        isOpen: true,
+        title: "Status Updated",
+        description: !currentPublish ? "Exercise set is now published!" : "Exercise set reverted to draft.",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Failed to toggle publish status", error);
-      alert("Error toggling publish status.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Update Failed",
+        description: "Error toggling publish status.",
+        variant: "error",
+      });
     }
   };
 
@@ -93,9 +116,20 @@ export default function AdminExercisesPage() {
       await exerciseApi.adminDeleteExerciseSet(deleteTargetId);
       setDeleteTargetId(null);
       await loadExercises();
+      setAlertConfig({
+        isOpen: true,
+        title: "Exercise Set Deleted",
+        description: "The exercise set has been successfully deleted.",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Failed to delete exercise set", error);
-      alert("Error deleting exercise set.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Deletion Failed",
+        description: "Error deleting exercise set.",
+        variant: "error",
+      });
     }
   };
 
@@ -107,7 +141,13 @@ export default function AdminExercisesPage() {
       setPreviewQuestions(data.questions || []);
     } catch (error) {
       console.error("Failed to load preview details", error);
-      alert("Failed to load practice preview.");
+      setPreviewSetId(null);
+      setAlertConfig({
+        isOpen: true,
+        title: "Load Failed",
+        description: "Failed to load practice preview.",
+        variant: "error",
+      });
     } finally {
       setLoadingPreview(false);
     }
@@ -349,13 +389,22 @@ export default function AdminExercisesPage() {
       )}
 
       {/* Delete Confirmation dialogue */}
-      <ConfirmModal
+      <Modal
         isOpen={deleteTargetId !== null}
         title="Delete Exercise Set?"
         description="Are you sure you want to permanently delete this exercise set? This will permanently delete all associated questions, answers, student attempts, and stats. This action is irreversible."
+        variant="danger"
         confirmLabel="Delete Set"
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTargetId(null)}
+      />
+
+      <Modal
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        variant={alertConfig.variant}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, isOpen: false }))}
       />
 
       {/* Dynamic Slide-in Preview Modal */}

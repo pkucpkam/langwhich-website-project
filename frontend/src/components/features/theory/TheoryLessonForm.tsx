@@ -17,6 +17,7 @@ import { TiptapEditor } from "./TiptapEditor";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 
 interface TheoryLessonFormProps {
@@ -43,6 +44,9 @@ export function TheoryLessonForm({
   const [estimatedMinutes, setEstimatedMinutes] = useState(5);
   const [isPublished, setIsPublished] = useState(true);
   const [content, setContent] = useState("");
+  
+  // Validation alert state
+  const [alertOpen, setAlertOpen] = useState(false);
 
   // Categories Dropdown list
   const [topics, setTopics] = useState<TheoryTopic[]>([]);
@@ -68,21 +72,21 @@ export function TheoryLessonForm({
   // Load initial values if editing
   useEffect(() => {
     if (initialValues) {
-      setTitle(initialValues.title);
-      setTopicId(initialValues.topicId);
+      setTitle(initialValues.title ?? "");
+      setTopicId(initialValues.topicId ?? "");
       setSummary(initialValues.summary || "");
       setThumbnail(initialValues.thumbnail || "");
-      setDifficulty(initialValues.difficulty);
-      setEstimatedMinutes(initialValues.estimatedMinutes);
-      setIsPublished(initialValues.isPublished);
-      setContent(initialValues.content);
+      setDifficulty(initialValues.difficulty ?? "BEGINNER");
+      setEstimatedMinutes(initialValues.estimatedMinutes ?? 5);
+      setIsPublished(initialValues.isPublished ?? true);
+      setContent(initialValues.content ?? "");
     }
   }, [initialValues]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !topicId || !content.trim()) {
-      alert("Please fill in the required fields: Title, Topic, and Content.");
+      setAlertOpen(true);
       return;
     }
 
@@ -279,6 +283,14 @@ export function TheoryLessonForm({
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={alertOpen}
+        title="Required Fields Missing"
+        description="Please fill in all the required fields: Title, Topic category track, and Lesson content."
+        variant="error"
+        onClose={() => setAlertOpen(false)}
+      />
     </form>
   );
 }

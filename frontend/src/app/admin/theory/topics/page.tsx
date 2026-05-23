@@ -19,6 +19,7 @@ import type { TheoryTopic, TheoryTopicRequest } from "@/types/theory";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 
 export default function AdminTopicsPage() {
   const [topics, setTopics] = useState<TheoryTopic[]>([]);
@@ -32,6 +33,20 @@ export default function AdminTopicsPage() {
   const [icon, setIcon] = useState("📘");
   const [orderIndex, setOrderIndex] = useState(0);
   const [isPublished, setIsPublished] = useState(true);
+
+  // Modal states
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    variant: "success" | "error";
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    variant: "success",
+  });
 
   const loadTopics = async () => {
     setLoading(true);
@@ -88,29 +103,27 @@ export default function AdminTopicsPage() {
       }
       resetForm();
       await loadTopics();
+      setAlertConfig({
+        isOpen: true,
+        title: "Category Saved",
+        description: editingTopic ? "Category topic updated successfully!" : "New category topic created successfully!",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Failed to save theory topic", error);
-      alert("Error saving topic. Please verify unique title/slug rules.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Save Failed",
+        description: "Error saving topic. Please verify unique title/slug rules.",
+        variant: "error",
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this topic? All lessons associated with it will be deleted!")) {
-      return;
-    }
-
-    try {
-      await theoryApi.deleteTopic(id);
-      await loadTopics();
-      if (editingTopic?.id === id) {
-        resetForm();
-      }
-    } catch (error) {
-      console.error("Failed to delete theory topic", error);
-      alert("Error deleting topic.");
-    }
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
   };
 
   return (
@@ -295,6 +308,50 @@ export default function AdminTopicsPage() {
           )}
         </div>
       </div>
+
+      {/* Reusable Modals */}
+      <Modal
+        isOpen={deleteId !== null}
+        title="Delete Category Topic"
+        description="Are you sure you want to delete this topic? All lessons associated with it will be deleted!"
+        variant="danger"
+        confirmLabel="Delete Category"
+        onConfirm={async () => {
+          if (deleteId === null) return;
+          try {
+            await theoryApi.deleteTopic(deleteId);
+            await loadTopics();
+            if (editingTopic?.id === deleteId) {
+              resetForm();
+            }
+            setAlertConfig({
+              isOpen: true,
+              title: "Category Deleted",
+              description: "Category topic has been successfully deleted.",
+              variant: "success",
+            });
+          } catch (error) {
+            console.error("Failed to delete theory topic", error);
+            setAlertConfig({
+              isOpen: true,
+              title: "Deletion Failed",
+              description: "Error deleting topic. Please try again.",
+              variant: "error",
+            });
+          } finally {
+            setDeleteId(null);
+          }
+        }}
+        onClose={() => setDeleteId(null)}
+      />
+
+      <Modal
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        variant={alertConfig.variant}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

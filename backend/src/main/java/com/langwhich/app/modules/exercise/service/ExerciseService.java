@@ -38,6 +38,7 @@ import com.langwhich.app.modules.exercise.dto.response.SaveAnswerResponse;
 import com.langwhich.app.modules.exercise.dto.response.AttemptReviewResponse;
 import com.langwhich.app.modules.exercise.repository.ExerciseAttemptAnswerRepository;
 import com.langwhich.app.modules.exercise.entity.ExerciseQuestion;
+import com.langwhich.app.modules.exercise.entity.QuestionAnswer;
 
 @Service
 @Transactional
@@ -188,7 +189,31 @@ public class ExerciseService {
         strategy.grade(question, attemptAnswer);
         exerciseAttemptAnswerRepository.save(attemptAnswer);
 
-        return new SaveAnswerResponse(true, "Answer saved successfully");
+        boolean isCorrect = attemptAnswer.isCorrect();
+        String explanation = question.getExplanation();
+        Long correctOptionId = null;
+        if (question.getType() == ExerciseType.MULTIPLE_CHOICE) {
+            correctOptionId = question.getOptions().stream()
+                    .filter(QuestionOption::isCorrect)
+                    .map(QuestionOption::getId)
+                    .findFirst()
+                    .orElse(null);
+        }
+        List<String> correctAnswers = null;
+        if (question.getType() == ExerciseType.FILL_IN_BLANK) {
+            correctAnswers = question.getAnswers().stream()
+                    .map(QuestionAnswer::getCorrectAnswer)
+                    .toList();
+        }
+
+        return SaveAnswerResponse.builder()
+                .success(true)
+                .message("Answer saved successfully")
+                .isCorrect(isCorrect)
+                .explanation(explanation)
+                .correctOptionId(correctOptionId)
+                .correctAnswers(correctAnswers)
+                .build();
     }
 
     public SubmitAttemptResponse submitAttempt(Long attemptId, User user) {

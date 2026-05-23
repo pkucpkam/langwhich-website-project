@@ -55,6 +55,10 @@ export interface SaveAnswerRequest {
 export interface SaveAnswerResponse {
   success: boolean;
   message: string;
+  isCorrect?: boolean;
+  explanation?: string | null;
+  correctOptionId?: number | null;
+  correctAnswers?: string[] | null;
 }
 
 export interface SubmitAttemptResponse {
@@ -111,6 +115,10 @@ export interface SavedAnswer {
   questionId: number;
   selectedOptionId?: number | null;
   textAnswer?: string | null;
+  isCorrect?: boolean;
+  explanation?: string | null;
+  correctOptionId?: number | null;
+  correctAnswers?: string[] | null;
 }
 
 export interface ActiveAttemptResponse {
