@@ -40,10 +40,37 @@ if [ ! -d "frontend/node_modules" ]; then
     cd frontend && npm install && cd ..
 fi
 
+# --- Free occupied ports to avoid conflicts ---
+free_port() {
+    local port=$1
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+        # On Windows (Git Bash)
+        local pids=$(netstat -ano | grep ":$port " | awk '{print $5}' | sort -u)
+        for pid in $pids; do
+            if [ -n "$pid" ] && [ "$pid" -ne 0 ]; then
+                echo -e "${YELLOW}[System] Port $port is occupied by Windows PID $pid. Terminating...${NC}"
+                taskkill -F -PID "$pid" 2>/dev/null
+            fi
+        done
+    else
+        # On Linux/macOS
+        local pid=$(lsof -t -i:"$port" 2>/dev/null)
+        if [ -n "$pid" ]; then
+            echo -e "${YELLOW}[System] Port $port is occupied by PID $pid. Terminating...${NC}"
+            kill -9 "$pid" 2>/dev/null
+        fi
+    fi
+}
+
+free_port 8080
+free_port 8082
+free_port 3000
+
 # --- Process Handlers ---
 
 BACKEND_PID=""
 FRONTEND_PID=""
+
 
 # Define cleanup function to terminate background processes on exit
 cleanup() {
@@ -80,7 +107,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # --- Start Backend ---
-echo -e "${BLUE}[Backend]${NC} Starting Spring Boot backend on http://localhost:8080..."
+echo -e "${BLUE}[Backend]${NC} Starting Spring Boot backend on http://localhost:8082..."
 cd backend || exit 1
 # Ensure Gradle wrapper has execute permission
 chmod +x gradlew 2>/dev/null
@@ -104,8 +131,8 @@ FRONTEND_PID=$!
 cd ..
 
 echo -e "${YELLOW}======================================================================${NC}"
-echo -e "${GREEN}✓ Frontend is starting at: ${NC}http://localhost:3000"
-echo -e "${BLUE}✓ Backend is starting at:  ${NC}http://localhost:8080"
+echo -e "${GREEN}[OK] Frontend is starting at: ${NC}http://localhost:3000"
+echo -e "${BLUE}[OK] Backend is starting at:  ${NC}http://localhost:8082"
 echo -e "${YELLOW}----------------------------------------------------------------------${NC}"
 echo -e "${YELLOW}Press [Ctrl+C] at any time to shutdown BOTH servers and free up RAM.${NC}"
 echo -e "${YELLOW}======================================================================${NC}\n"

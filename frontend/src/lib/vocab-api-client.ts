@@ -1,4 +1,5 @@
 import axios from "axios";
+import { handleTokenRefresh } from "./auth-refresh";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -33,31 +34,10 @@ vocabApiClient.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-
-      if (typeof window !== "undefined") {
-        const refreshToken = localStorage.getItem("refresh_token");
-
-        if (refreshToken) {
-          try {
-            const response = await axios.post(
-              `${API_URL}/api/v1/auth/refresh-token`,
-              { refreshToken }
-            );
-            const { access_token } = response.data;
-            localStorage.setItem("access_token", access_token);
-            originalRequest.headers.Authorization = `Bearer ${access_token}`;
-            return vocabApiClient(originalRequest);
-          } catch {
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("refresh_token");
-            window.location.href = "/auth/login";
-          }
-        } else {
-          window.location.href = "/auth/login";
-        }
-      }
+      return handleTokenRefresh(originalRequest, vocabApiClient);
     }
 
     return Promise.reject(error);
   }
 );
+

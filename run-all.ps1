@@ -52,9 +52,29 @@ if (-not (Test-Path "frontend\node_modules")) {
     Set-Location $originalDir
 }
 
+# Function to free up a port by terminating the process using it
+function Free-Port {
+    param (
+        [int]$Port
+    )
+    Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | ForEach-Object {
+        $p = $_.OwningProcess
+        if ($p) {
+            Write-Host "[System] Port $Port is currently occupied by process $p. Terminating process..." -ForegroundColor Yellow
+            Stop-Process -Id $p -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+# Free ports before running to avoid conflicts
+Free-Port -Port 8080
+Free-Port -Port 8082
+Free-Port -Port 3000
+
 Write-Host "======================================================================" -ForegroundColor Yellow
 Write-Host "                 STARTING LANGWHICH WEBSITE PROJECT                  " -ForegroundColor Yellow
 Write-Host "======================================================================" -ForegroundColor Yellow
+
 
 # Start backend job
 Write-Host "[Backend] Starting Spring Boot backend on http://localhost:8080..." -ForegroundColor Blue
@@ -71,11 +91,12 @@ Start-Job -Name "LangWhich-Frontend" -ScriptBlock {
 } | Out-Null
 
 Write-Host "======================================================================" -ForegroundColor Yellow
-Write-Host "✓ Frontend is starting at: http://localhost:3000" -ForegroundColor Green
-Write-Host "✓ Backend is starting at:  http://localhost:8080" -ForegroundColor Blue
+Write-Host "[OK] Frontend is starting at: http://localhost:3000" -ForegroundColor Green
+Write-Host "[OK] Backend is starting at:  http://localhost:8082" -ForegroundColor Blue
 Write-Host "----------------------------------------------------------------------" -ForegroundColor Yellow
 Write-Host "Press [Ctrl+C] at any time to shutdown BOTH servers and free up RAM." -ForegroundColor Yellow
 Write-Host "======================================================================" -ForegroundColor Yellow
+
 
 # Loop to stream output and await Ctrl+C
 try {
