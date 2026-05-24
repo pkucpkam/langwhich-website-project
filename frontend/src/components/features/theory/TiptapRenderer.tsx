@@ -70,7 +70,15 @@ function renderNode(node: TiptapNode): React.ReactNode {
       const level = node.attrs?.level || 1;
       const headingText = getRawText(node);
       const headingId = headingText
-        ? headingText.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-")
+        ? headingText
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "D")
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, "")
+            .replace(/[\s_-]+/g, "-")
+            .replace(/^-+|-+$/g, "")
         : undefined;
 
       const baseClass = "text-text-primary font-bold tracking-tight mt-8 mb-4";

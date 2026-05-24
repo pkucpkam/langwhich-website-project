@@ -124,6 +124,7 @@ erDiagram
         varchar title
         varchar description
         bigint topic_id FK
+        bigint lesson_id FK
         varchar difficulty
         integer estimated_minutes
         boolean is_published

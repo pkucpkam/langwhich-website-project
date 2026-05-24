@@ -3,6 +3,8 @@ export type Difficulty = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 export type ExerciseType =
   | "MULTIPLE_CHOICE"
   | "FILL_IN_BLANK"
+  | "FIND_AND_CORRECT"
+  | "SENTENCE_REWRITE"
   | "LISTENING"
   | "MATCHING"
   | "WRITING"
@@ -15,6 +17,9 @@ export interface ExerciseSet {
   topicId?: number;
   topicName?: string;
   topicSlug?: string;
+  lessonId?: number;
+  lessonTitle?: string;
+  lessonSlug?: string;
   difficulty: Difficulty;
   estimatedMinutes: number;
   thumbnailUrl?: string;
@@ -23,10 +28,43 @@ export interface ExerciseSet {
   createdAt?: string;
 }
 
+export interface MultipleChoiceMetadata {
+  options: { key: string; content: string }[];
+  correctAnswer?: string;
+}
+
+export interface FindAndCorrectMetadata {
+  mistakeText: string;
+  acceptedAnswers: string[];
+}
+
+export interface SentenceRewriteMetadata {
+  keyword?: string;
+  acceptedAnswers: string[];
+}
+
+export type QuestionMetadata = 
+  | MultipleChoiceMetadata 
+  | FindAndCorrectMetadata 
+  | SentenceRewriteMetadata 
+  | Record<string, unknown>;
+
 export interface QuestionOption {
   id: number;
   optionText: string;
-  sortOrder: number;
+  isCorrect?: boolean;
+}
+
+export interface QuestionOptionReview {
+  id: number;
+  optionText: string;
+  isCorrect?: boolean;
+}
+
+export interface AdminQuestionOption {
+  id: number;
+  optionText: string;
+  isCorrect?: boolean;
 }
 
 export interface Question {
@@ -35,10 +73,21 @@ export interface Question {
   questionText: string;
   points: number;
   sortOrder: number;
+  metadata?: QuestionMetadata;
   options?: QuestionOption[];
+  correctAnswers?: string[];
+}
+
+export interface ExerciseSection {
+  id: number;
+  title: string;
+  instruction?: string;
+  sortOrder: number;
+  questions: Question[];
 }
 
 export interface ExerciseSetDetail extends Omit<ExerciseSet, "questionCount"> {
+  sections?: ExerciseSection[];
   questions: Question[];
 }
 
@@ -48,17 +97,17 @@ export interface StartAttemptResponse {
 
 export interface SaveAnswerRequest {
   questionId: number;
-  selectedOptionId?: number | null;
-  textAnswer?: string | null;
+  payload: Record<string, unknown>;
 }
 
 export interface SaveAnswerResponse {
   success: boolean;
   message: string;
   isCorrect?: boolean;
+  score?: number;
+  maxScore?: number;
+  feedback?: string;
   explanation?: string | null;
-  correctOptionId?: number | null;
-  correctAnswers?: string[] | null;
 }
 
 export interface SubmitAttemptResponse {
@@ -72,17 +121,13 @@ export interface SubmitAttemptResponse {
 
 export interface AttemptAnswerReview {
   questionId: number;
-  selectedOptionId?: number | null;
-  textAnswer?: string | null;
+  payload: Record<string, unknown>;
   isCorrect: boolean;
   pointsEarned: number;
-}
-
-export interface QuestionOptionReview {
-  id: number;
-  optionText: string;
-  isCorrect: boolean;
-  sortOrder: number;
+  feedback?: string;
+  explanation?: string;
+  selectedOptionId?: number | null;
+  textAnswer?: string | null;
 }
 
 export interface QuestionReview {
@@ -92,6 +137,9 @@ export interface QuestionReview {
   explanation?: string;
   points: number;
   sortOrder: number;
+  metadata?: QuestionMetadata;
+  grammarTags?: string[];
+  skillTags?: string[];
   options?: QuestionOptionReview[];
   correctAnswers?: string[];
 }
@@ -113,12 +161,11 @@ export interface AttemptReview {
 
 export interface SavedAnswer {
   questionId: number;
-  selectedOptionId?: number | null;
-  textAnswer?: string | null;
+  payload: Record<string, unknown>;
   isCorrect?: boolean;
+  feedback?: string;
   explanation?: string | null;
-  correctOptionId?: number | null;
-  correctAnswers?: string[] | null;
+  score?: number;
 }
 
 export interface ActiveAttemptResponse {
@@ -132,11 +179,12 @@ export interface ActiveAttemptResponse {
   savedAnswers: SavedAnswer[];
 }
 
-export interface AdminQuestionOption {
-  id?: number;
-  optionText: string;
-  isCorrect: boolean;
+export interface AdminExerciseSection {
+  id: number;
+  title: string;
+  instruction?: string;
   sortOrder: number;
+  questions: AdminQuestion[];
 }
 
 export interface AdminQuestion {
@@ -146,18 +194,23 @@ export interface AdminQuestion {
   explanation?: string;
   points: number;
   sortOrder: number;
+  metadata?: QuestionMetadata;
+  grammarTags?: string[];
+  skillTags?: string[];
   options?: AdminQuestionOption[];
   correctAnswers?: string[];
 }
 
 export interface AdminExerciseSetDetail extends Omit<ExerciseSet, "questionCount"> {
-  questions: AdminQuestion[];
+  sections?: AdminExerciseSection[];
+  questions?: AdminQuestion[];
 }
 
 export interface AdminExerciseSetRequest {
   title: string;
   description?: string;
   topicId?: number | null;
+  lessonId?: number | null;
   difficulty: Difficulty;
   estimatedMinutes: number;
   thumbnailUrl?: string;
@@ -165,11 +218,19 @@ export interface AdminExerciseSetRequest {
 }
 
 export interface AdminQuestionRequest {
+  exerciseSectionId: number;
   type: ExerciseType;
   questionText: string;
   explanation?: string;
   points: number;
   sortOrder: number;
-  options?: AdminQuestionOption[];
-  correctAnswers?: string[];
+  metadata?: QuestionMetadata;
+  grammarTags?: string[];
+  skillTags?: string[];
+}
+
+export interface AdminExerciseSectionRequest {
+  title: string;
+  instruction?: string;
+  sortOrder: number;
 }

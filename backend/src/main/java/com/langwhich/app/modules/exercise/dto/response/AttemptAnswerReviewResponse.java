@@ -1,5 +1,6 @@
 package com.langwhich.app.modules.exercise.dto.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.langwhich.app.modules.exercise.entity.ExerciseAttemptAnswer;
 import lombok.*;
 
@@ -9,19 +10,21 @@ import lombok.*;
 @AllArgsConstructor
 public class AttemptAnswerReviewResponse {
     private Long questionId;
-    private Long selectedOptionId;
-    private String textAnswer;
+    private JsonNode payload;
     private boolean isCorrect;
     private int pointsEarned;
+    private String feedback;
+    private String explanation;
     
     public static AttemptAnswerReviewResponse fromEntity(ExerciseAttemptAnswer answer) {
         if (answer == null) return null;
         return AttemptAnswerReviewResponse.builder()
             .questionId(answer.getQuestion().getId())
-            .selectedOptionId(answer.getSelectedOption() != null ? answer.getSelectedOption().getId() : null)
-            .textAnswer(answer.getTextAnswer())
+            .payload(answer.getPayload())
             .isCorrect(answer.isCorrect())
             .pointsEarned(answer.getPointsEarned())
+            .feedback(answer.getFeedback())
+            .explanation(answer.getExplanation())
             .build();
     }
 }

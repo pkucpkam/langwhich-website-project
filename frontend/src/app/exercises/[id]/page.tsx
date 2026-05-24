@@ -83,18 +83,18 @@ export default function PracticeSessionPage() {
 
         // Restore previously synced answers and checked status
         attemptData.savedAnswers.forEach((ans) => {
-          updateAnswer(ans.questionId, {
-            selectedOptionId: ans.selectedOptionId,
-            textAnswer: ans.textAnswer,
-          });
+          updateAnswer(ans.questionId, ans.payload || {});
           markAsSaved(ans.questionId, true);
 
           if (ans.isCorrect !== undefined && ans.isCorrect !== null) {
             markQuestionAsChecked(ans.questionId, {
               isCorrect: ans.isCorrect,
+              score: ans.score,
+              maxScore: ans.score,
+              feedback: ans.feedback,
               explanation: ans.explanation,
-              correctOptionId: ans.correctOptionId,
-              correctAnswers: ans.correctAnswers,
+              correctOptionId: (ans as any).correctOptionId,
+              correctAnswers: (ans as any).correctAnswers,
             });
           }
         });
@@ -147,8 +147,8 @@ export default function PracticeSessionPage() {
   const currentAnswer = answers[currentQuestion.id];
   const hasProvidedAnswer = !!(
     currentAnswer &&
-    ((currentAnswer.selectedOptionId !== null && currentAnswer.selectedOptionId !== undefined) ||
-      (currentAnswer.textAnswer !== null && currentAnswer.textAnswer !== undefined && currentAnswer.textAnswer.trim() !== ""))
+    Object.keys(currentAnswer).length > 0 &&
+    Object.values(currentAnswer).some(val => val !== null && val !== undefined && val !== "")
   );
 
   // Compute total answered questions
@@ -156,8 +156,8 @@ export default function PracticeSessionPage() {
     const ans = answers[parseInt(qIdStr)];
     return (
       ans &&
-      ((ans.selectedOptionId !== undefined && ans.selectedOptionId !== null) ||
-        (ans.textAnswer !== undefined && ans.textAnswer !== null && ans.textAnswer !== ""))
+      Object.keys(ans).length > 0 &&
+      Object.values(ans).some(val => val !== null && val !== undefined && val !== "")
     );
   }).length;
 
@@ -173,10 +173,7 @@ export default function PracticeSessionPage() {
     }
   };
 
-  const handleAnswerChange = (data: {
-    selectedOptionId?: number | null;
-    textAnswer?: string | null;
-  }) => {
+  const handleAnswerChange = (data: Record<string, unknown>) => {
     updateAnswer(currentQuestion.id, data);
   };
 
@@ -220,15 +217,17 @@ export default function PracticeSessionPage() {
       setCheckingQuestionId(questionId);
       const res = await exerciseApi.saveAnswer(attemptId, {
         questionId,
-        selectedOptionId: ans.selectedOptionId,
-        textAnswer: ans.textAnswer,
+        payload: ans,
       });
 
       markQuestionAsChecked(questionId, {
         isCorrect: res.isCorrect ?? false,
+        score: res.score,
+        maxScore: res.maxScore,
+        feedback: res.feedback,
         explanation: res.explanation,
-        correctOptionId: res.correctOptionId,
-        correctAnswers: res.correctAnswers,
+        correctOptionId: (res as any).correctOptionId,
+        correctAnswers: (res as any).correctAnswers,
       });
       markAsSaved(questionId, true);
     } catch (err) {
@@ -267,8 +266,7 @@ export default function PracticeSessionPage() {
 
           <QuestionRenderer
             question={currentQuestion}
-            selectedOptionId={answers[currentQuestion.id]?.selectedOptionId}
-            textAnswer={answers[currentQuestion.id]?.textAnswer}
+            payload={answers[currentQuestion.id]}
             onChange={handleAnswerChange}
             checkedFeedback={checkedQuestions[currentQuestion.id]}
           />

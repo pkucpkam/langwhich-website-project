@@ -37,8 +37,9 @@ public class AttemptReviewResponse {
             .status(attempt.getStatus().name())
             .startedAt(attempt.getStartedAt())
             .submittedAt(attempt.getSubmittedAt())
-            .questions(attempt.getExerciseSet().getQuestions() != null ?
-                attempt.getExerciseSet().getQuestions().stream()
+            .questions(attempt.getExerciseSet().getSections() != null ?
+                attempt.getExerciseSet().getSections().stream()
+                    .flatMap(s -> s.getQuestions().stream())
                     .map(QuestionReviewResponse::fromEntity)
                     .collect(Collectors.toList()) : null)
             .userAnswers(attempt.getAnswers() != null ?

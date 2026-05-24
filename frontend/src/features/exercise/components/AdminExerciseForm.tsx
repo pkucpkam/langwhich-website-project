@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { exerciseApi } from "../api";
 import { theoryApi } from "@/api/theory.api";
-import type { TheoryTopic } from "@/types/theory";
+import type { TheoryTopic, TheoryLesson } from "@/types/theory";
 import type { AdminQuestion, Difficulty, ExerciseType } from "../types";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -42,9 +42,11 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [isPublished, setIsPublished] = useState(false);
   const [topicId, setTopicId] = useState<number | null>(null);
+  const [lessonId, setLessonId] = useState<number | null>(null);
 
-  // Topics cache
+  // Topics and Lessons cache
   const [topics, setTopics] = useState<TheoryTopic[]>([]);
+  const [lessons, setLessons] = useState<TheoryLesson[]>([]);
 
   // Page level statuses
   const [loading, setLoading] = useState(isEditMode);
@@ -77,17 +79,21 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
   // Validation errors
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch topics
+  // Fetch topics and lessons
   useEffect(() => {
-    async function fetchTopics() {
+    async function fetchTheoryData() {
       try {
-        const data = await theoryApi.getAllTopicsAdmin();
-        setTopics(data);
+        const [topicsData, lessonsData] = await Promise.all([
+          theoryApi.getAllTopicsAdmin(),
+          theoryApi.getAllLessonsAdmin({ size: 1000 })
+        ]);
+        setTopics(topicsData);
+        setLessons(lessonsData.content || []);
       } catch (err) {
-        console.error("Failed to load theory topics", err);
+        console.error("Failed to load theory data", err);
       }
     }
-    fetchTopics();
+    fetchTheoryData();
   }, []);
 
   // Fetch exercise details if in edit mode
@@ -107,6 +113,7 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
         setThumbnailUrl(data.thumbnailUrl || "");
         setIsPublished(data.isPublished);
         setTopicId(data.topicId || null);
+        setLessonId(data.lessonId || null);
         setQuestions(data.questions || []);
       } catch (err: any) {
         console.error("Failed to load exercise set details", err);
@@ -134,6 +141,7 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
         title: title.trim(),
         description: description.trim() || undefined,
         topicId: topicId,
+        lessonId: lessonId,
         difficulty,
         estimatedMinutes,
         thumbnailUrl: thumbnailUrl.trim() || undefined,
@@ -244,14 +252,20 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
     setQExplanation(q.explanation || "");
 
     if (q.type === "MULTIPLE_CHOICE") {
+      const qOptions = q.options || (q.metadata as any)?.options || [];
+      const mappedOptions = qOptions.map((o: any) => ({
+        optionText: o.optionText || o.content || "",
+        isCorrect: !!o.isCorrect,
+      }));
       setOptions(
-        q.options?.map((o) => ({
-          optionText: o.optionText,
-          isCorrect: o.isCorrect,
-        })) || []
+        mappedOptions.length > 0 ? mappedOptions : [
+          { optionText: "", isCorrect: true },
+          { optionText: "", isCorrect: false },
+        ]
       );
     } else {
-      setFibAnswers(q.correctAnswers || []);
+      const answers = q.correctAnswers || (q.metadata as any)?.acceptedAnswers || (q.metadata as any)?.correctAnswers || [];
+      setFibAnswers(answers);
       setFibInput("");
     }
 
@@ -315,17 +329,21 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
         setFormError("You must select at least one correct option.");
         return;
       }
-      payload.options = validOptions.map((o, idx) => ({
-        optionText: o.optionText.trim(),
-        isCorrect: o.isCorrect,
-        sortOrder: idx,
-      }));
+      payload.metadata = {
+        options: validOptions.map((o, idx) => ({
+          optionText: o.optionText.trim(),
+          isCorrect: o.isCorrect,
+          sortOrder: idx,
+        }))
+      };
     } else {
       if (fibAnswers.length === 0) {
         setFormError("You must add at least one accepted fill-in-blank text answer.");
         return;
       }
-      payload.correctAnswers = fibAnswers;
+      payload.metadata = {
+        acceptedAnswers: fibAnswers
+      };
     }
 
     try {
@@ -439,13 +457,35 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
               </label>
               <select
                 value={topicId || ""}
-                onChange={(e) => setTopicId(e.target.value ? parseInt(e.target.value) : null)}
+                onChange={(e) => {
+                  setTopicId(e.target.value ? parseInt(e.target.value) : null);
+                  setLessonId(null);
+                }}
                 className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-border bg-neutral-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all"
               >
                 <option value="">General (No specific grammar topic)</option>
                 {topics.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lesson Select */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider block">
+                Specific Theory Lesson
+              </label>
+              <select
+                value={lessonId || ""}
+                onChange={(e) => setLessonId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-border bg-neutral-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+              >
+                <option value="">None (Attach to Topic or General only)</option>
+                {(topicId ? lessons.filter(l => l.topicId === topicId) : lessons).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.title}
                   </option>
                 ))}
               </select>

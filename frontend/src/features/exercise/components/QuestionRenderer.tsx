@@ -1,49 +1,102 @@
 import type { Question } from "../types";
 import { MultipleChoiceQuestion } from "./MultipleChoiceQuestion";
 import { FillBlankQuestion } from "./FillBlankQuestion";
+import { FindAndCorrectQuestion } from "./FindAndCorrectQuestion";
+import { SentenceRewriteQuestion } from "./SentenceRewriteQuestion";
 
 interface QuestionRendererProps {
   question: Question;
-  selectedOptionId?: number | null;
-  textAnswer?: string | null;
-  onChange: (data: { selectedOptionId?: number | null; textAnswer?: string | null }) => void;
+  payload?: Record<string, unknown> | null;
+  selectedOptionId?: number | null; // Legacy compatibility
+  textAnswer?: string | null;       // Legacy compatibility
+  onChange: (payload: Record<string, unknown>) => void;
   disabled?: boolean;
   checkedFeedback?: {
     isCorrect: boolean;
+    score?: number;
+    maxScore?: number;
+    feedback?: string;
     explanation?: string | null;
-    correctOptionId?: number | null;
-    correctAnswers?: string[] | null;
+    correctOptionId?: number | null;  // MC check compatibility
+    correctAnswers?: string[] | null; // FIB check compatibility
   } | null;
 }
 
 export function QuestionRenderer({
   question,
+  payload = {},
   selectedOptionId,
   textAnswer,
   onChange,
   disabled = false,
   checkedFeedback = null,
 }: QuestionRendererProps) {
+  // Resolve unified payload from new or legacy inputs
+  const resolvedPayload = payload && Object.keys(payload).length > 0
+    ? payload 
+    : {
+        selectedOptionId,
+        textAnswer,
+      };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {(() => {
         switch (question.type) {
-          case "MULTIPLE_CHOICE":
+          case "MULTIPLE_CHOICE": {
+            // MCQ metadata can have "options"
+            const metadata = question.metadata as Record<string, unknown> | undefined;
+            const mcOptions = metadata?.options as { key: string; content: string }[] | undefined;
+
+            const mappedQuestion = {
+              ...question,
+              options: question.options ?? (metadata?.options as any[])?.map((o: any, idx: number) => ({
+                id: idx, // Use index for metadata-driven questions
+                optionText: o.optionText ? o.optionText : (o.key && o.content ? `${o.key}. ${o.content}` : o.content || ""),
+                sortOrder: idx,
+              })) ?? []
+            };
+
+            const activeOptionId = (resolvedPayload?.selectedOptionId as number) ?? null;
+
             return (
               <MultipleChoiceQuestion
-                question={question}
-                selectedOptionId={selectedOptionId}
-                onChange={(optId) => onChange({ selectedOptionId: optId, textAnswer: null })}
+                question={mappedQuestion}
+                selectedOptionId={activeOptionId}
+                onChange={(optId) => onChange({ selectedOptionId: optId })}
                 disabled={disabled}
                 checkedFeedback={checkedFeedback}
               />
             );
-          case "FILL_IN_BLANK":
+          }
+          case "FILL_IN_BLANK": {
+            const activeText = (resolvedPayload?.textAnswer as string) ?? "";
             return (
               <FillBlankQuestion
                 question={question}
-                textAnswer={textAnswer}
-                onChange={(txtVal) => onChange({ selectedOptionId: null, textAnswer: txtVal })}
+                textAnswer={activeText}
+                onChange={(txtVal) => onChange({ textAnswer: txtVal })}
+                disabled={disabled}
+                checkedFeedback={checkedFeedback}
+              />
+            );
+          }
+          case "FIND_AND_CORRECT":
+            return (
+              <FindAndCorrectQuestion
+                question={question}
+                payload={resolvedPayload}
+                onChange={onChange}
+                disabled={disabled}
+                checkedFeedback={checkedFeedback}
+              />
+            );
+          case "SENTENCE_REWRITE":
+            return (
+              <SentenceRewriteQuestion
+                question={question}
+                payload={resolvedPayload}
+                onChange={onChange}
                 disabled={disabled}
                 checkedFeedback={checkedFeedback}
               />
@@ -51,7 +104,7 @@ export function QuestionRenderer({
           default:
             return (
               <div className="p-6 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl font-medium">
-                Unsupported question type: {question.type}. The Exercise Engine is designed to support this in a future update!
+                Unsupported question type: {question.type}.
               </div>
             );
         }

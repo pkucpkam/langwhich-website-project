@@ -12,6 +12,8 @@ import type {
   AdminExerciseSetDetail,
   AdminExerciseSetRequest,
   AdminQuestionRequest,
+  AdminExerciseSection,
+  AdminExerciseSectionRequest,
 } from "../types";
 
 export interface PaginationResponse<T> {
@@ -31,6 +33,7 @@ export interface PaginationResponse<T> {
 export const exerciseApi = {
   getExerciseSets: async (params?: {
     topicSlug?: string;
+    lessonId?: number;
     difficulty?: string;
     search?: string;
     page?: number;
@@ -130,6 +133,30 @@ export const exerciseApi = {
     );
     return response.data;
   },
+
+  // ===== ADMIN SECTIONS =====
+
+  adminCreateSection: async (setId: number, data: AdminExerciseSectionRequest): Promise<AdminExerciseSection> => {
+    const response = await vocabApiClient.post<AdminExerciseSection>(
+      `/admin/exercise-sets/${setId}/sections`,
+      data
+    );
+    return response.data;
+  },
+
+  adminUpdateSection: async (sectionId: number, data: AdminExerciseSectionRequest): Promise<AdminExerciseSection> => {
+    const response = await vocabApiClient.put<AdminExerciseSection>(
+      `/admin/sections/${sectionId}`,
+      data
+    );
+    return response.data;
+  },
+
+  adminDeleteSection: async (sectionId: number): Promise<void> => {
+    await vocabApiClient.delete(`/admin/sections/${sectionId}`);
+  },
+
+  // ===== ADMIN QUESTIONS =====
 
   adminCreateQuestion: async (setId: number, data: AdminQuestionRequest): Promise<AdminQuestion> => {
     const response = await vocabApiClient.post<AdminQuestion>(

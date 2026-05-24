@@ -17,6 +17,8 @@ import com.langwhich.app.modules.exercise.dto.response.AdminExerciseSetDetailRes
 import com.langwhich.app.modules.exercise.dto.request.AdminExerciseSetRequest;
 import com.langwhich.app.modules.exercise.dto.request.AdminQuestionReorderRequest;
 import com.langwhich.app.modules.exercise.dto.response.AdminQuestionResponse;
+import com.langwhich.app.modules.exercise.dto.request.AdminExerciseSectionRequest;
+import com.langwhich.app.modules.exercise.dto.response.AdminExerciseSectionResponse;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -72,6 +74,30 @@ public class AdminExerciseController {
             @RequestParam boolean publish
     ) {
         return ResponseEntity.ok(adminExerciseService.publishExerciseSet(id, publish));
+    }
+
+    // ===== SECTIONS =====
+
+    @PostMapping("/exercise-sets/{id}/sections")
+    public ResponseEntity<AdminExerciseSectionResponse> createSection(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminExerciseSectionRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(adminExerciseService.createSection(id, request));
+    }
+
+    @PutMapping("/sections/{sectionId}")
+    public ResponseEntity<AdminExerciseSectionResponse> updateSection(
+            @PathVariable Long sectionId,
+            @Valid @RequestBody AdminExerciseSectionRequest request
+    ) {
+        return ResponseEntity.ok(adminExerciseService.updateSection(sectionId, request));
+    }
+
+    @DeleteMapping("/sections/{sectionId}")
+    public ResponseEntity<Void> deleteSection(@PathVariable Long sectionId) {
+        adminExerciseService.deleteSection(sectionId);
+        return ResponseEntity.noContent().build();
     }
 
     // ===== QUESTIONS =====

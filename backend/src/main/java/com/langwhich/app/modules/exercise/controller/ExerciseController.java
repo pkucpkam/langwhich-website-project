@@ -34,11 +34,12 @@ public class ExerciseController {
     @GetMapping
     public ResponseEntity<Page<ExerciseSetResponse>> getExerciseSets(
             @RequestParam(required = false) String topicSlug,
+            @RequestParam(required = false) Long lessonId,
             @RequestParam(required = false) Difficulty difficulty,
             @RequestParam(required = false) String search,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return ResponseEntity.ok(exerciseService.getExerciseSets(topicSlug, difficulty, search, pageable));
+        return ResponseEntity.ok(exerciseService.getExerciseSets(topicSlug, lessonId, difficulty, search, pageable));
     }
 
     @GetMapping("/{id}")

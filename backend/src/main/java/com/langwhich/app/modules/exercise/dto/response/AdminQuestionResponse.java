@@ -1,14 +1,12 @@
 package com.langwhich.app.modules.exercise.dto.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.langwhich.app.modules.exercise.entity.ExerciseQuestion;
 import com.langwhich.app.modules.exercise.entity.ExerciseType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Data
 @Builder
@@ -21,8 +19,9 @@ public class AdminQuestionResponse {
     private String explanation;
     private int points;
     private int sortOrder;
-    private List<AdminQuestionOptionResponse> options;
-    private List<String> correctAnswers;
+    private JsonNode metadata;
+    private JsonNode grammarTags;
+    private JsonNode skillTags;
 
     public static AdminQuestionResponse fromEntity(ExerciseQuestion question) {
         if (question == null) return null;
@@ -33,14 +32,9 @@ public class AdminQuestionResponse {
             .explanation(question.getExplanation())
             .points(question.getPoints())
             .sortOrder(question.getSortOrder())
-            .options(question.getOptions() != null ? 
-                question.getOptions().stream()
-                    .map(AdminQuestionOptionResponse::fromEntity)
-                    .collect(Collectors.toList()) : null)
-            .correctAnswers(question.getAnswers() != null ?
-                question.getAnswers().stream()
-                    .map(ans -> ans.getCorrectAnswer())
-                    .collect(Collectors.toList()) : null)
+            .metadata(question.getMetadata())
+            .grammarTags(question.getGrammarTags())
+            .skillTags(question.getSkillTags())
             .build();
     }
 }

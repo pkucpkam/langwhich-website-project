@@ -1,12 +1,12 @@
 package com.langwhich.app.modules.exercise.strategy;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.langwhich.app.modules.exercise.entity.ExerciseQuestion;
-import com.langwhich.app.modules.exercise.entity.ExerciseAttemptAnswer;
 import com.langwhich.app.modules.exercise.entity.ExerciseType;
 
 public interface GradingStrategy {
     
     boolean supports(ExerciseType type);
     
-    void grade(ExerciseQuestion question, ExerciseAttemptAnswer attemptAnswer);
+    GradeResult grade(ExerciseQuestion question, JsonNode userPayload);
 }

@@ -1,14 +1,11 @@
 package com.langwhich.app.modules.exercise.dto.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.langwhich.app.modules.exercise.entity.ExerciseAttemptAnswer;
-import com.langwhich.app.modules.exercise.entity.ExerciseType;
-import com.langwhich.app.modules.exercise.entity.QuestionOption;
-import com.langwhich.app.modules.exercise.entity.QuestionAnswer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.util.List;
 
 @Data
 @Builder
@@ -16,38 +13,20 @@ import java.util.List;
 @AllArgsConstructor
 public class SavedAnswerResponseDto {
     private Long questionId;
-    private Long selectedOptionId;
-    private String textAnswer;
+    private JsonNode payload;
     private Boolean isCorrect;
+    private String feedback;
     private String explanation;
-    private Long correctOptionId;
-    private List<String> correctAnswers;
+    private Double score;
 
     public static SavedAnswerResponseDto fromEntity(ExerciseAttemptAnswer answer) {
-        Long correctOptId = null;
-        if (answer.getQuestion().getType() == ExerciseType.MULTIPLE_CHOICE) {
-            correctOptId = answer.getQuestion().getOptions().stream()
-                    .filter(QuestionOption::isCorrect)
-                    .map(QuestionOption::getId)
-                    .findFirst()
-                    .orElse(null);
-        }
-
-        List<String> correctAnsws = null;
-        if (answer.getQuestion().getType() == ExerciseType.FILL_IN_BLANK) {
-            correctAnsws = answer.getQuestion().getAnswers().stream()
-                    .map(QuestionAnswer::getCorrectAnswer)
-                    .toList();
-        }
-
         return SavedAnswerResponseDto.builder()
                 .questionId(answer.getQuestion().getId())
-                .selectedOptionId(answer.getSelectedOption() != null ? answer.getSelectedOption().getId() : null)
-                .textAnswer(answer.getTextAnswer())
+                .payload(answer.getPayload())
                 .isCorrect(answer.isCorrect())
-                .explanation(answer.getQuestion().getExplanation())
-                .correctOptionId(correctOptId)
-                .correctAnswers(correctAnsws)
+                .feedback(answer.getFeedback())
+                .explanation(answer.getExplanation())
+                .score((double) answer.getPointsEarned())
                 .build();
     }
 }

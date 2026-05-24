@@ -138,7 +138,8 @@ export default function AdminExercisesPage() {
     setLoadingPreview(true);
     try {
       const data = await exerciseApi.adminGetExerciseSetDetail(id);
-      setPreviewQuestions(data.questions || []);
+      const flatQuestions = data.sections?.flatMap((s) => s.questions) ?? [];
+      setPreviewQuestions(flatQuestions);
     } catch (error) {
       console.error("Failed to load preview details", error);
       setPreviewSetId(null);
@@ -448,40 +449,95 @@ export default function AdminExercisesPage() {
 
                     <p className="text-sm font-semibold text-text-primary">{q.questionText}</p>
 
-                    {q.type === "MULTIPLE_CHOICE" ? (
-                      <div className="grid grid-cols-1 gap-2 pl-2">
-                        {q.options?.map((opt: any, oIdx: number) => (
-                          <div
-                            key={opt.id || oIdx}
-                            className={cn(
-                              "text-xs p-3 rounded-lg border flex items-center gap-3",
-                              opt.isCorrect
-                                ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
-                                : "bg-neutral-background border-neutral-border/40 text-text-secondary"
-                            )}
-                          >
-                            <span className="font-bold text-[10px] uppercase w-5 h-5 rounded flex items-center justify-center bg-neutral-border">
-                              {String.fromCharCode(65 + oIdx)}
-                            </span>
-                            <span className="flex-1">{opt.optionText}</span>
-                            {opt.isCorrect && (
-                              <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-400">
-                                Correct Option
+                    {(() => {
+                      const metadata = q.metadata as Record<string, any> | undefined;
+                      switch (q.type) {
+                        case "MULTIPLE_CHOICE": {
+                          const mcOptions = q.options ?? metadata?.options?.map((o: any, idx: number) => ({
+                            id: idx,
+                            optionText: o.optionText ? o.optionText : (o.key && o.content ? `${o.key}. ${o.content}` : o.content || ""),
+                            isCorrect: !!o.isCorrect || o.key === metadata?.correctAnswer,
+                          })) ?? [];
+
+                          return (
+                            <div className="grid grid-cols-1 gap-2 pl-2">
+                              {mcOptions.map((opt: any, oIdx: number) => (
+                                <div
+                                  key={opt.id || oIdx}
+                                  className={cn(
+                                    "text-xs p-3 rounded-lg border flex items-center gap-3",
+                                    opt.isCorrect
+                                      ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
+                                      : "bg-neutral-background border-neutral-border/40 text-text-secondary"
+                                  )}
+                                >
+                                  <span className="font-bold text-[10px] uppercase w-5 h-5 rounded flex items-center justify-center bg-neutral-border">
+                                    {String.fromCharCode(65 + oIdx)}
+                                  </span>
+                                  <span className="flex-1">{opt.optionText}</span>
+                                  {opt.isCorrect && (
+                                    <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-400">
+                                      Correct Option
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        case "FILL_IN_BLANK": {
+                          const accepted = q.correctAnswers ?? metadata?.acceptedAnswers ?? [];
+                          return (
+                            <div className="bg-neutral-background border border-neutral-border rounded-lg p-3 text-xs space-y-1">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary block">
+                                Accepted Blanks:
                               </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="bg-neutral-background border border-neutral-border rounded-lg p-3 text-xs space-y-1">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary block">
-                          Accepted Blanks:
-                        </span>
-                        <p className="font-mono text-emerald-400 font-bold leading-relaxed">
-                          {q.correctAnswers?.join("  /  ") || "(None Specified)"}
-                        </p>
-                      </div>
-                    )}
+                              <p className="font-mono text-emerald-400 font-bold leading-relaxed">
+                                {accepted.join("  /  ") || "(None Specified)"}
+                              </p>
+                            </div>
+                          );
+                        }
+                        case "FIND_AND_CORRECT": {
+                          const mistake = metadata?.mistakeText ?? "";
+                          const accepted = metadata?.acceptedAnswers ?? [];
+                          return (
+                            <div className="bg-neutral-background border border-neutral-border rounded-lg p-3 text-xs space-y-2">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary block">
+                                Mistake Word &amp; Accepted Corrections:
+                              </span>
+                              <p className="text-xs font-semibold text-text-primary">
+                                Mistake: <span className="text-red-400">&quot;{mistake}&quot;</span>
+                              </p>
+                              <p className="text-xs font-semibold text-text-primary">
+                                Accepted corrections: <span className="text-emerald-400">{accepted.join(" or ")}</span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        case "SENTENCE_REWRITE": {
+                          const keyword = metadata?.keyword ?? "";
+                          const accepted = q.correctAnswers ?? metadata?.acceptedAnswers ?? [];
+                          return (
+                            <div className="bg-neutral-background border border-neutral-border rounded-lg p-3 text-xs space-y-2">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary block">
+                                Rewrite Prompt details:
+                              </span>
+                              {keyword && (
+                                <p className="text-xs font-semibold text-text-primary">
+                                  Keyword: <span className="text-amber-500 font-mono font-bold">&quot;{keyword}&quot;</span>
+                                </p>
+                              )}
+                              <p className="text-xs font-semibold text-text-primary">
+                                Accepted sentences: <span className="text-emerald-400">{accepted.join("  /  ")}</span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        default:
+                          return null;
+                      }
+                    })()}
 
                     {q.explanation && (
                       <div className="bg-primary/5 border border-primary/15 rounded-lg p-3 text-xs text-text-secondary leading-relaxed">

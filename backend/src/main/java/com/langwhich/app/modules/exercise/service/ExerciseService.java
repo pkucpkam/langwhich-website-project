@@ -4,6 +4,7 @@ import com.langwhich.app.common.exception.ConflictException;
 import com.langwhich.app.common.exception.ForbiddenException;
 import com.langwhich.app.common.exception.ResourceNotFoundException;
 import com.langwhich.app.modules.exercise.strategy.GradingStrategy;
+import com.langwhich.app.modules.exercise.strategy.GradeResult;
 import com.langwhich.app.modules.theory.entity.Difficulty;
 import com.langwhich.app.modules.user.entity.User;
 import org.springframework.data.domain.Page;
@@ -12,23 +13,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.domain.Specification;
 
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import com.langwhich.app.modules.exercise.entity.ExerciseSet;
+import com.langwhich.app.modules.exercise.entity.ExerciseSection;
 import com.langwhich.app.modules.exercise.dto.response.ExerciseSetResponse;
 import com.langwhich.app.modules.exercise.dto.response.SubmitAttemptResponse;
 import com.langwhich.app.modules.exercise.dto.response.ExerciseSetDetailResponse;
-import com.langwhich.app.modules.exercise.repository.QuestionOptionRepository;
 import com.langwhich.app.modules.exercise.repository.ExerciseAttemptRepository;
 import com.langwhich.app.modules.exercise.entity.ExerciseAttempt;
 import com.langwhich.app.modules.exercise.dto.request.SaveAnswerRequest;
-import com.langwhich.app.modules.exercise.entity.QuestionOption;
 import com.langwhich.app.modules.exercise.dto.response.SavedAnswerResponseDto;
 import com.langwhich.app.modules.exercise.entity.ExerciseAttemptAnswer;
+import com.langwhich.app.modules.exercise.entity.UserQuestionAttempt;
 import com.langwhich.app.modules.exercise.repository.ExerciseQuestionRepository;
+import com.langwhich.app.modules.exercise.repository.UserQuestionAttemptRepository;
 import com.langwhich.app.modules.exercise.entity.ExerciseType;
 import com.langwhich.app.modules.exercise.repository.ExerciseSetRepository;
 import com.langwhich.app.modules.exercise.entity.AttemptStatus;
@@ -38,7 +41,6 @@ import com.langwhich.app.modules.exercise.dto.response.SaveAnswerResponse;
 import com.langwhich.app.modules.exercise.dto.response.AttemptReviewResponse;
 import com.langwhich.app.modules.exercise.repository.ExerciseAttemptAnswerRepository;
 import com.langwhich.app.modules.exercise.entity.ExerciseQuestion;
-import com.langwhich.app.modules.exercise.entity.QuestionAnswer;
 
 @Service
 @Transactional
@@ -46,35 +48,38 @@ public class ExerciseService {
 
     private final ExerciseSetRepository exerciseSetRepository;
     private final ExerciseQuestionRepository exerciseQuestionRepository;
-    private final QuestionOptionRepository questionOptionRepository;
     private final ExerciseAttemptRepository exerciseAttemptRepository;
     private final ExerciseAttemptAnswerRepository exerciseAttemptAnswerRepository;
+    private final UserQuestionAttemptRepository userQuestionAttemptRepository;
     private final List<GradingStrategy> gradingStrategies;
 
-    // Explicit constructor injection
     public ExerciseService(
             ExerciseSetRepository exerciseSetRepository,
             ExerciseQuestionRepository exerciseQuestionRepository,
-            QuestionOptionRepository questionOptionRepository,
             ExerciseAttemptRepository exerciseAttemptRepository,
             ExerciseAttemptAnswerRepository exerciseAttemptAnswerRepository,
+            UserQuestionAttemptRepository userQuestionAttemptRepository,
             List<GradingStrategy> gradingStrategies) {
         this.exerciseSetRepository = exerciseSetRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
-        this.questionOptionRepository = questionOptionRepository;
         this.exerciseAttemptRepository = exerciseAttemptRepository;
         this.exerciseAttemptAnswerRepository = exerciseAttemptAnswerRepository;
+        this.userQuestionAttemptRepository = userQuestionAttemptRepository;
         this.gradingStrategies = gradingStrategies;
     }
 
     @Transactional(readOnly = true)
-    public Page<ExerciseSetResponse> getExerciseSets(String topicSlug, Difficulty difficulty, String search, Pageable pageable) {
+    public Page<ExerciseSetResponse> getExerciseSets(String topicSlug, Long lessonId, Difficulty difficulty, String search, Pageable pageable) {
         Specification<ExerciseSet> spec = Specification.where(
                 (root, query, cb) -> cb.equal(root.get("isPublished"), true)
         );
 
         if (topicSlug != null && !topicSlug.trim().isEmpty()) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("topic").get("slug"), topicSlug));
+        }
+
+        if (lessonId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("lesson").get("id"), lessonId));
         }
 
         if (difficulty != null) {
@@ -111,8 +116,6 @@ public class ExerciseService {
             throw new ConflictException("Cannot practice an unpublished exercise set");
         }
 
-        // Prevent duplicate attempts and support session recovery:
-        // If there is an active (IN_PROGRESS) attempt, return that attempt ID to let the user resume.
         Optional<ExerciseAttempt> activeAttempt = exerciseAttemptRepository
                 .findFirstByUserIdAndExerciseSetIdOrderByStartedAtDesc(user.getId(), setId);
         
@@ -120,12 +123,16 @@ public class ExerciseService {
             return new StartAttemptResponse(activeAttempt.get().getId());
         }
 
+        int totalQuestions = set.getSections().stream()
+                .mapToInt(s -> s.getQuestions().size())
+                .sum();
+
         ExerciseAttempt attempt = ExerciseAttempt.builder()
                 .user(user)
                 .exerciseSet(set)
                 .startedAt(LocalDateTime.now())
                 .status(AttemptStatus.IN_PROGRESS)
-                .totalQuestions(set.getQuestions().size())
+                .totalQuestions(totalQuestions)
                 .score(0.0)
                 .correctCount(0)
                 .durationSeconds(0)
@@ -143,7 +150,6 @@ public class ExerciseService {
             throw new ForbiddenException("You do not have permission to edit this attempt");
         }
 
-        // Prevent editing after submission
         if (attempt.getStatus() == AttemptStatus.COMPLETED) {
             throw new ConflictException("Cannot edit answers for a completed practice session");
         }
@@ -151,7 +157,7 @@ public class ExerciseService {
         ExerciseQuestion question = exerciseQuestionRepository.findById(request.getQuestionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Question not found with id: " + request.getQuestionId()));
 
-        if (!question.getExerciseSet().getId().equals(attempt.getExerciseSet().getId())) {
+        if (!question.getExerciseSection().getExerciseSet().getId().equals(attempt.getExerciseSet().getId())) {
             throw new ConflictException("Question does not belong to this exercise set");
         }
 
@@ -162,57 +168,47 @@ public class ExerciseService {
                         .question(question)
                         .build());
 
-        // Process answer based on question type
-        if (question.getType() == ExerciseType.MULTIPLE_CHOICE) {
-            if (request.getSelectedOptionId() == null) {
-                attemptAnswer.setSelectedOption(null);
-            } else {
-                QuestionOption option = questionOptionRepository.findById(request.getSelectedOptionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Option not found with id: " + request.getSelectedOptionId()));
-                if (!option.getQuestion().getId().equals(question.getId())) {
-                    throw new ConflictException("Selected option does not belong to this question");
-                }
-                attemptAnswer.setSelectedOption(option);
-            }
-            attemptAnswer.setTextAnswer(null);
-        } else if (question.getType() == ExerciseType.FILL_IN_BLANK) {
-            attemptAnswer.setTextAnswer(request.getTextAnswer());
-            attemptAnswer.setSelectedOption(null);
-        }
+        // Save generic payload in entity
+        attemptAnswer.setPayload(request.getPayload());
 
-        // Dynamically locate strategy and grade the response
+        // Dynamically grade using registry strategies
         GradingStrategy strategy = gradingStrategies.stream()
                 .filter(s -> s.supports(question.getType()))
                 .findFirst()
                 .orElseThrow(() -> new ConflictException("No grading strategy found for type: " + question.getType()));
 
-        strategy.grade(question, attemptAnswer);
+        GradeResult gradeResult = strategy.grade(question, request.getPayload());
+
+        // Update attempt answer metrics
+        attemptAnswer.setCorrect(gradeResult.isCorrect());
+        attemptAnswer.setPointsEarned((int) gradeResult.getScore());
+        attemptAnswer.setFeedback(gradeResult.getFeedback());
+        attemptAnswer.setExplanation(gradeResult.getExplanation());
+
         exerciseAttemptAnswerRepository.save(attemptAnswer);
 
-        boolean isCorrect = attemptAnswer.isCorrect();
-        String explanation = question.getExplanation();
-        Long correctOptionId = null;
-        if (question.getType() == ExerciseType.MULTIPLE_CHOICE) {
-            correctOptionId = question.getOptions().stream()
-                    .filter(QuestionOption::isCorrect)
-                    .map(QuestionOption::getId)
-                    .findFirst()
-                    .orElse(null);
-        }
-        List<String> correctAnswers = null;
-        if (question.getType() == ExerciseType.FILL_IN_BLANK) {
-            correctAnswers = question.getAnswers().stream()
-                    .map(QuestionAnswer::getCorrectAnswer)
-                    .toList();
-        }
+        // Update/Create UserQuestionAttempt learning analytics
+        UserQuestionAttempt uqa = userQuestionAttemptRepository
+                .findByUserIdAndQuestionId(user.getId(), question.getId())
+                .orElseGet(() -> UserQuestionAttempt.builder()
+                        .user(user)
+                        .question(question)
+                        .firstAttemptCorrect(gradeResult.isCorrect())
+                        .retryCount(0)
+                        .build());
+
+        uqa.setRetryCount(uqa.getRetryCount() + 1);
+        uqa.setFinalScore(gradeResult.getScore());
+        userQuestionAttemptRepository.save(uqa);
 
         return SaveAnswerResponse.builder()
                 .success(true)
                 .message("Answer saved successfully")
-                .isCorrect(isCorrect)
-                .explanation(explanation)
-                .correctOptionId(correctOptionId)
-                .correctAnswers(correctAnswers)
+                .isCorrect(gradeResult.isCorrect())
+                .score(gradeResult.getScore())
+                .maxScore(gradeResult.getMaxScore())
+                .feedback(gradeResult.getFeedback())
+                .explanation(gradeResult.getExplanation())
                 .build();
     }
 
@@ -224,7 +220,6 @@ public class ExerciseService {
             throw new ForbiddenException("You do not have permission to submit this attempt");
         }
 
-        // Prevent duplicate submission
         if (attempt.getStatus() == AttemptStatus.COMPLETED) {
             return SubmitAttemptResponse.builder()
                     .attemptId(attempt.getId())
@@ -236,8 +231,11 @@ public class ExerciseService {
                     .build();
         }
 
-        List<ExerciseQuestion> questions = exerciseQuestionRepository
-                .findAllByExerciseSetIdOrderBySortOrderAscIdAsc(attempt.getExerciseSet().getId());
+        // Get all questions in the set across all sections
+        List<ExerciseQuestion> questions = attempt.getExerciseSet().getSections().stream()
+                .flatMap(s -> s.getQuestions().stream())
+                .collect(Collectors.toList());
+
         List<ExerciseAttemptAnswer> answers = exerciseAttemptAnswerRepository
                 .findAllByAttemptId(attemptId);
 
@@ -248,7 +246,6 @@ public class ExerciseService {
         for (ExerciseQuestion q : questions) {
             totalPossiblePoints += q.getPoints();
             
-            // Find if student answered this question
             Optional<ExerciseAttemptAnswer> answeredOpt = answers.stream()
                     .filter(a -> a.getQuestion().getId().equals(q.getId()))
                     .findFirst();
@@ -260,7 +257,6 @@ public class ExerciseService {
                     totalPointsEarned += ans.getPointsEarned();
                 }
             } else {
-                // If question is not answered, create an empty, incorrect attempt answer
                 ExerciseAttemptAnswer emptyAns = ExerciseAttemptAnswer.builder()
                         .attempt(attempt)
                         .question(q)

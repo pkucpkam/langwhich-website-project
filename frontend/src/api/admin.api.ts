@@ -37,4 +37,13 @@ export const adminApi = {
     const { data } = await vocabApiClient.post("/admin/folders", request);
     return data;
   },
+
+  updateOfficialFolder: async (id: number, request: FolderRequest): Promise<Folder> => {
+    const { data } = await vocabApiClient.put(`/admin/folders/${id}`, request);
+    return data;
+  },
+
+  deleteOfficialFolder: async (id: number): Promise<void> => {
+    await vocabApiClient.delete(`/admin/folders/${id}`);
+  },
 };

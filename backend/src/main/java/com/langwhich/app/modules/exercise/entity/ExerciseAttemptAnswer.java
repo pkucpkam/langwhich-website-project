@@ -1,7 +1,10 @@
 package com.langwhich.app.modules.exercise.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,12 +36,15 @@ public class ExerciseAttemptAnswer {
     @JoinColumn(name = "question_id", nullable = false)
     private ExerciseQuestion question;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "selected_option_id")
-    private QuestionOption selectedOption;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private JsonNode payload;
 
-    @Column(name = "text_answer", columnDefinition = "TEXT")
-    private String textAnswer;
+    @Column(columnDefinition = "TEXT")
+    private String feedback;
+
+    @Column(columnDefinition = "TEXT")
+    private String explanation;
 
     @Column(name = "is_correct", nullable = false)
     @Builder.Default

@@ -20,7 +20,7 @@ public class ExerciseSetDetailResponse {
     private Difficulty difficulty;
     private int estimatedMinutes;
     private String thumbnailUrl;
-    private List<QuestionResponse> questions;
+    private List<ExerciseSectionResponse> sections;
 
     public static ExerciseSetDetailResponse fromEntity(ExerciseSet set) {
         if (set == null) return null;
@@ -34,9 +34,9 @@ public class ExerciseSetDetailResponse {
             .difficulty(set.getDifficulty())
             .estimatedMinutes(set.getEstimatedMinutes())
             .thumbnailUrl(set.getThumbnailUrl())
-            .questions(set.getQuestions() != null ? 
-                set.getQuestions().stream()
-                    .map(QuestionResponse::fromEntity)
+            .sections(set.getSections() != null ? 
+                set.getSections().stream()
+                    .map(ExerciseSectionResponse::fromEntity)
                     .collect(Collectors.toList()) : null)
             .build();
     }

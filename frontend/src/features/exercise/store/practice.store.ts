@@ -2,29 +2,31 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { ExerciseSetDetail } from "../types";
 
+interface CheckedQuestionFeedback {
+  isCorrect: boolean;
+  score?: number;
+  maxScore?: number;
+  feedback?: string;
+  explanation?: string | null;
+  correctOptionId?: number | null;
+  correctAnswers?: string[] | null;
+}
+
 interface PracticeState {
   attemptId: number | null;
   exerciseSet: ExerciseSetDetail | null;
   currentQuestionIndex: number;
-  answers: Record<number, { selectedOptionId?: number | null; textAnswer?: string | null }>;
+  answers: Record<number, Record<string, unknown>>;
   savedAnswers: Record<number, boolean>;
   timerSeconds: number;
   practiceMode: "INSTANT" | "ALL_AT_ONCE";
-  checkedQuestions: Record<
-    number,
-    {
-      isCorrect: boolean;
-      explanation?: string | null;
-      correctOptionId?: number | null;
-      correctAnswers?: string[] | null;
-    }
-  >;
+  checkedQuestions: Record<number, CheckedQuestionFeedback>;
 
   initPractice: (attemptId: number, set: ExerciseSetDetail) => void;
   setQuestionIndex: (index: number) => void;
   updateAnswer: (
     questionId: number,
-    data: { selectedOptionId?: number | null; textAnswer?: string | null }
+    data: Record<string, unknown>
   ) => void;
   markAsSaved: (questionId: number, status: boolean) => void;
   incrementTimer: () => void;
@@ -33,12 +35,7 @@ interface PracticeState {
   setPracticeMode: (mode: "INSTANT" | "ALL_AT_ONCE") => void;
   markQuestionAsChecked: (
     questionId: number,
-    feedback: {
-      isCorrect: boolean;
-      explanation?: string | null;
-      correctOptionId?: number | null;
-      correctAnswers?: string[] | null;
-    }
+    feedback: CheckedQuestionFeedback
   ) => void;
 }
 
