@@ -53,11 +53,22 @@ export default function LessonReaderPage() {
     try {
       const doc = JSON.parse(jsonString);
       const items: TocItem[] = [];
+      const idCounts = new Map<string, number>();
+
+      const getRawText = (n: any): string => {
+        if (n.type === "text" && n.text) {
+          return n.text;
+        }
+        if (n.content) {
+          return n.content.map(getRawText).join("");
+        }
+        return "";
+      };
 
       const traverse = (node: any) => {
         if (node.type === "heading" && node.content) {
-          const text = node.content.map((c: any) => c.text).join("");
-          const id = text
+          const text = getRawText(node);
+          let baseId = text
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .replace(/đ/g, "d")
@@ -66,8 +77,20 @@ export default function LessonReaderPage() {
             .replace(/[^\w\s-]/g, "")
             .replace(/[\s_-]+/g, "-")
             .replace(/^-+|-+$/g, "");
+          
+          if (!baseId) {
+            baseId = "heading";
+          }
+
+          let uniqueId = baseId;
+          const count = idCounts.get(baseId) || 0;
+          if (count > 0) {
+            uniqueId = `${baseId}-${count}`;
+          }
+          idCounts.set(baseId, count + 1);
+
           const level = node.attrs?.level || 1;
-          items.push({ text, id, level });
+          items.push({ text, id: uniqueId, level });
         }
         if (node.content) {
           node.content.forEach(traverse);

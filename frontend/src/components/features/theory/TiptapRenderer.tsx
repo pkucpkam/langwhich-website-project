@@ -29,7 +29,10 @@ export function TiptapRenderer({ contentJson, className }: TiptapRendererProps) 
     if (typeof contentJson === "string") {
       doc = JSON.parse(contentJson);
     } else {
-      doc = contentJson as TiptapNode;
+      doc = JSON.parse(JSON.stringify(contentJson)) as TiptapNode;
+    }
+    if (doc) {
+      enrichHeadingsWithUniqueIds(doc);
     }
   } catch (error) {
     console.error("Failed to parse Tiptap JSON content", error);
@@ -57,6 +60,49 @@ export function TiptapRenderer({ contentJson, className }: TiptapRendererProps) 
   );
 }
 
+function enrichHeadingsWithUniqueIds(doc: TiptapNode) {
+  const idCounts = new Map<string, number>();
+
+  const traverse = (node: TiptapNode) => {
+    if (node.type === "heading") {
+      const headingText = getRawText(node);
+      let baseId = headingText
+        ? headingText
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "D")
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, "")
+            .replace(/[\s_-]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+        : "heading";
+
+      if (!baseId) {
+        baseId = "heading";
+      }
+
+      let uniqueId = baseId;
+      const count = idCounts.get(baseId) || 0;
+      if (count > 0) {
+        uniqueId = `${baseId}-${count}`;
+      }
+      idCounts.set(baseId, count + 1);
+
+      if (!node.attrs) {
+        node.attrs = {};
+      }
+      node.attrs.uniqueId = uniqueId;
+    }
+
+    if (node.content) {
+      node.content.forEach(traverse);
+    }
+  };
+
+  traverse(doc);
+}
+
 function renderNode(node: TiptapNode): React.ReactNode {
   switch (node.type) {
     case "paragraph":
@@ -68,18 +114,7 @@ function renderNode(node: TiptapNode): React.ReactNode {
 
     case "heading": {
       const level = node.attrs?.level || 1;
-      const headingText = getRawText(node);
-      const headingId = headingText
-        ? headingText
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/đ/g, "d")
-            .replace(/Đ/g, "D")
-            .toLowerCase()
-            .replace(/[^\w\s-]/g, "")
-            .replace(/[\s_-]+/g, "-")
-            .replace(/^-+|-+$/g, "")
-        : undefined;
+      const headingId = node.attrs?.uniqueId;
 
       const baseClass = "text-text-primary font-bold tracking-tight mt-8 mb-4";
       if (level === 1) {

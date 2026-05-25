@@ -60,16 +60,35 @@ export default function PracticeSessionPage() {
         setLoading(true);
         setError(null);
 
-        const attemptData = await exerciseApi.getActiveAttempt(id as number);
+        let activeAttemptId = id as number;
+        let attemptData;
+
+        try {
+          attemptData = await exerciseApi.getActiveAttempt(activeAttemptId);
+        } catch (err: any) {
+          if (err.response?.status !== 404) {
+            throw err;
+          }
+
+          const startedAttempt = await exerciseApi.startAttempt(id as number);
+          activeAttemptId = startedAttempt.attemptId;
+
+          if (activeAttemptId !== id) {
+            router.replace(`/exercises/${activeAttemptId}`);
+            return;
+          }
+
+          attemptData = await exerciseApi.getActiveAttempt(activeAttemptId);
+        }
 
         // If attempt is already completed, redirect directly to review
         if (attemptData.status === "COMPLETED") {
-          router.replace(`/exercises/attempts/${id}/review`);
+          router.replace(`/exercises/attempts/${activeAttemptId}/review`);
           return;
         }
 
         // Initialize state inside Zustand store
-        initPractice(id as number, {
+        initPractice(activeAttemptId, {
           id: attemptData.exerciseSetId,
           title: attemptData.exerciseSetTitle,
           difficulty: attemptData.difficulty,
