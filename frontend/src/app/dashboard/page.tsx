@@ -9,18 +9,20 @@ import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, _hasHydrated } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace("/auth/login");
-    } else if (user?.role === "ADMIN") {
-      router.replace("/admin");
+    if (_hasHydrated) {
+      if (!isAuthenticated) {
+        router.replace("/auth/login");
+      } else if (user?.role === "ADMIN") {
+        router.replace("/admin");
+      }
     }
-  }, [isAuthenticated, user, router]);
+  }, [_hasHydrated, isAuthenticated, user, router]);
 
-  if (!isAuthenticated || user?.role === "ADMIN") {
+  if (!_hasHydrated || !isAuthenticated || user?.role === "ADMIN") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

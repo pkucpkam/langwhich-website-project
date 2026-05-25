@@ -48,11 +48,13 @@ The client uses Zustand to manage authentication state across the application. T
 * `accessToken: string | null`: The raw JWT token for authorization.
 * `refreshToken: string | null`: The raw JWT token for token rotation.
 * `isAuthenticated: boolean`: A fast-access flag for guard routes.
+* `_hasHydrated: boolean`: An internal flag indicating if the persisted state has been hydrated from localStorage to prevent race conditions during page load/refresh.
 
 #### Actions:
 * `setAuth(user, accessToken, refreshToken)`: Sets all user and token states and saves them in local storage.
 * `clearAuth()`: Purges user data, clears tokens from memory and local storage, logging the user out.
 * `updateTokens(accessToken, refreshToken?)`: Updates the access token (and optionally the rotated refresh token) in the store and local storage.
+* `setHasHydrated(state)`: Updates the hydration status once Zustand's `onRehydrateStorage` fires.
 
 ### 2.2. Server-Side Flow
 The server-side flow follows a clean Spring Boot controller-service-repository pattern:

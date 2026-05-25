@@ -24,7 +24,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, user, clearAuth } = useAuthStore();
+  const { isAuthenticated, user, clearAuth, _hasHydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,21 +35,21 @@ export default function AdminLayout({
   }, []);
 
   useEffect(() => {
-    if (isMounted) {
+    if (_hasHydrated && isMounted) {
       if (!isAuthenticated) {
         router.replace("/auth/login");
       } else if (user?.role !== "ADMIN") {
         router.replace("/vocab");
       }
     }
-  }, [isMounted, isAuthenticated, user, router]);
+  }, [_hasHydrated, isMounted, isAuthenticated, user, router]);
 
   const handleLogout = () => {
     clearAuth();
     window.location.href = "/auth/login";
   };
 
-  if (!isMounted || !isAuthenticated || user?.role !== "ADMIN") {
+  if (!_hasHydrated || !isMounted || !isAuthenticated || user?.role !== "ADMIN") {
     return (
       <div className="min-h-screen bg-[#0B1220] flex flex-col items-center justify-center gap-4">
         <Lock className="h-12 w-12 text-[#EF4444] animate-bounce" />

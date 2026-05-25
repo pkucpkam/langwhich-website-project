@@ -312,7 +312,7 @@ export default function TheoryHomepage() {
 
             <div className="space-y-3">
               {popularLessons.slice(0, 4).map((lesson) => (
-                <Link key={lesson.id} href={`/theory/${lesson.topicSlug}/${lesson.slug}`}>
+                <Link key={lesson.id} href={`/theory/${lesson.topicSlug}/${lesson.slug}`} className="block">
                   <div className="flex items-center gap-4 bg-neutral-card hover:bg-neutral-card/75 border border-neutral-border hover:border-primary/25 rounded-2xl p-4 cursor-pointer transition-all duration-200 group">
                     <div className="hidden sm:block w-16 h-16 rounded-xl bg-neutral-background border border-neutral-border/60 overflow-hidden relative flex-shrink-0">
                       {lesson.thumbnail ? (
@@ -356,7 +356,7 @@ export default function TheoryHomepage() {
 
             <div className="space-y-3">
               {latestLessons.slice(0, 4).map((lesson) => (
-                <Link key={lesson.id} href={`/theory/${lesson.topicSlug}/${lesson.slug}`}>
+                <Link key={lesson.id} href={`/theory/${lesson.topicSlug}/${lesson.slug}`} className="block">
                   <div className="flex items-center gap-4 bg-neutral-card hover:bg-neutral-card/75 border border-neutral-border hover:border-primary/25 rounded-2xl p-4 cursor-pointer transition-all duration-200 group">
                     <div className="hidden sm:block w-16 h-16 rounded-xl bg-neutral-background border border-neutral-border/60 overflow-hidden relative flex-shrink-0">
                       {lesson.thumbnail ? (
