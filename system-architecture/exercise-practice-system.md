@@ -26,12 +26,16 @@ This module handles the practice lifecycle for users. It is designed to be highl
   - `answers: Record<number, { selectedOptionId?: number | null, textAnswer?: string | null }>` - User's inputs mapped by question ID.
   - `savedAnswers: Record<number, boolean>` - Synced status (clean/dirty) per question.
   - `timerSeconds: number` - Seconds spent.
+  - `practiceMode: "INSTANT" | "ALL_AT_ONCE"` - Practice mode choice ("Làm tới đâu check tới đó" vs. "Làm xong mới check").
+  - `checkedQuestions: Record<number, CheckedFeedback>` - Live correctness feedback (correct/incorrect state, explanation, correct options/answers) per checked question in `"INSTANT"` mode.
 * **Actions**:
   - `initPractice(attemptId, set)` - Initialize state or preserve current attempt.
   - `setQuestionIndex(index)` - Navigates to question index.
   - `updateAnswer(questionId, data)` - Captures selection and marks it dirty.
   - `markAsSaved(questionId, status)` - Callback to set synced state.
   - `incrementTimer()` - Ticks clock.
+  - `setPracticeMode(mode)` - Switches between practice modes.
+  - `markQuestionAsChecked(questionId, feedback)` - Stores live grading results for a question.
   - `clearPractice()` - Resets store to initial state.
 
 ### 2.2. Server-side Flow
@@ -49,8 +53,8 @@ Standard Spring Boot layered execution chain:
 | **GET** | `/api/exercises` | Topic, difficulty, search, pageable | `Page<ExerciseSetResponse>` | Public |
 | **GET** | `/api/exercises/{id}` | None | `ExerciseSetDetailResponse` | Public |
 | **POST** | `/api/exercises/{id}/start` | None | `StartAttemptResponse` (attemptId) | Secured |
-| **GET** | `/api/exercises/attempts/{attemptId}` | None | `ActiveAttemptResponse` (session recovery) | Secured |
-| **POST** | `/api/exercises/attempts/{attemptId}/answers` | `SaveAnswerRequest` | `SaveAnswerResponse` (success/message) | Secured |
+| **GET** | `/api/exercises/attempts/{attemptId}` | None | `ActiveAttemptResponse` (session recovery, includes `savedAnswers` with correctness detail) | Secured |
+| **POST** | `/api/exercises/attempts/{attemptId}/answers` | `SaveAnswerRequest` | `SaveAnswerResponse` (success, message, plus live grading: `isCorrect`, `explanation`, `correctOptionId`, `correctAnswers`) | Secured |
 | **POST** | `/api/exercises/attempts/{attemptId}/submit` | None | `SubmitAttemptResponse` (final score/time) | Secured |
 | **GET** | `/api/exercises/attempts/{attemptId}/review` | None | `AttemptReviewResponse` (all answers/explanations) | Secured |
 
@@ -75,17 +79,30 @@ sequenceDiagram
     DB-->>Server: Return Attempt Entity
     Server-->>Browser: Return attemptId
     Browser->>Server: GET /api/exercises/attempts/{attemptId}
-    Server-->>Browser: Return active session data (recovery)
-    Browser->>Store: initPractice() & restore answers
+    Server-->>Browser: Return active session data (recovery details including existing grades)
+    Browser->>Store: initPractice() & restore answers/checked status
     
-    loop Practice Session
-        Student->>Browser: Select Option / Type Input
-        Browser->>Store: updateAnswer() [marked dirty]
-        Note over Browser,Store: 1s Debounce Timeout triggers
-        Browser->>Server: POST /api/exercises/attempts/{attemptId}/answers
-        Server->>DB: Grade and save answer
-        Server-->>Browser: Return Success
-        Browser->>Store: markAsSaved() [marked clean]
+    alt Mode: ALL_AT_ONCE ("Làm xong mới check")
+        loop Answer & Autosave
+            Student->>Browser: Select Option / Type Input
+            Browser->>Store: updateAnswer() [marked dirty]
+            Note over Browser,Store: 1s Debounce Timeout triggers
+            Browser->>Server: POST /api/exercises/attempts/{attemptId}/answers
+            Server->>DB: Grade and save answer
+            Server-->>Browser: Return Success
+            Browser->>Store: markAsSaved() [marked clean]
+        end
+    else Mode: INSTANT ("Làm tới đâu check tới đó")
+        loop Check as you go
+            Student->>Browser: Select Option / Type Input
+            Browser->>Store: updateAnswer() [marked dirty]
+            Student->>Browser: Click "Kiểm tra đáp án" (Check)
+            Browser->>Server: POST /api/exercises/attempts/{attemptId}/answers
+            Server->>DB: Grade, check correctness & save answer
+            Server-->>Browser: Return Live Grading (isCorrect, explanation, correct answers)
+            Browser->>Store: markQuestionAsChecked() & markAsSaved() [locked inputs]
+            Note over Browser: Render green/red highlights, show explanation & "Câu tiếp theo" button
+        end
     end
 
     Student->>Browser: Click Submit Practice
@@ -107,6 +124,7 @@ erDiagram
         varchar title
         varchar description
         bigint topic_id FK
+        bigint lesson_id FK
         varchar difficulty
         integer estimated_minutes
         boolean is_published

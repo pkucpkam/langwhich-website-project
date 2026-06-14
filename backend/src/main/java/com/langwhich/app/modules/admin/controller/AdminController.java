@@ -85,6 +85,23 @@ public class AdminController {
         return ResponseEntity.ok(folderService.createOfficialFolder(request, admin));
     }
 
+    @PutMapping("/folders/{id}")
+    public ResponseEntity<FolderResponse> updateOfficialFolder(
+        @PathVariable Long id,
+        @Valid @RequestBody FolderRequest request,
+        @AuthenticationPrincipal User admin
+    ) {
+        return ResponseEntity.ok(folderService.updateFolder(id, request, admin));
+    }
+
+    @DeleteMapping("/folders/{id}")
+    public ResponseEntity<Void> deleteOfficialFolder(
+        @PathVariable Long id,
+        @AuthenticationPrincipal User admin
+    ) {
+        folderService.deleteFolder(id, admin);
+        return ResponseEntity.noContent().build();
+    }
 
     // ===== LEADERBOARD =====
 

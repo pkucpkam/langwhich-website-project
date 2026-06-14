@@ -34,11 +34,12 @@ public class ExerciseController {
     @GetMapping
     public ResponseEntity<Page<ExerciseSetResponse>> getExerciseSets(
             @RequestParam(required = false) String topicSlug,
+            @RequestParam(required = false) Long lessonId,
             @RequestParam(required = false) Difficulty difficulty,
             @RequestParam(required = false) String search,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return ResponseEntity.ok(exerciseService.getExerciseSets(topicSlug, difficulty, search, pageable));
+        return ResponseEntity.ok(exerciseService.getExerciseSets(topicSlug, lessonId, difficulty, search, pageable));
     }
 
     @GetMapping("/{id}")
@@ -49,9 +50,10 @@ public class ExerciseController {
     @PostMapping("/{id}/start")
     public ResponseEntity<StartAttemptResponse> startAttempt(
             @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "false") boolean forceNew,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(exerciseService.startAttempt(id, user));
+        return ResponseEntity.ok(exerciseService.startAttempt(id, forceNew, user));
     }
 
     @GetMapping("/attempts/{attemptId}")
@@ -85,5 +87,14 @@ public class ExerciseController {
             @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.ok(exerciseService.getAttemptReview(attemptId, user));
+    }
+
+    @DeleteMapping("/attempts/{attemptId}")
+    public ResponseEntity<Void> deleteAttempt(
+            @PathVariable Long attemptId,
+            @AuthenticationPrincipal User user
+    ) {
+        exerciseService.deleteAttempt(attemptId, user);
+        return ResponseEntity.noContent().build();
     }
 }

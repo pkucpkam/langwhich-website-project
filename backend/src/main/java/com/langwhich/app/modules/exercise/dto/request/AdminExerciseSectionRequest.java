@@ -10,14 +10,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AdminQuestionOptionRequest {
-
-    private Long id; // Optional ID for matching existing options
-
-    @NotBlank(message = "Option text is required")
-    private String optionText;
-
-    private boolean isCorrect;
-
+public class AdminExerciseSectionRequest {
+    @NotBlank(message = "Section title is required")
+    private String title;
+    
+    private String instruction;
+    
     private int sortOrder;
 }

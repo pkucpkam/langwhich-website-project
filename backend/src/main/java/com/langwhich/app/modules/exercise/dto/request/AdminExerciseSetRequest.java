@@ -19,6 +19,9 @@ public class AdminExerciseSetRequest {
     private String description;
 
     private Long topicId;
+    
+    private Long lessonId;
+
 
     @NotBlank(message = "Difficulty is required")
     private String difficulty;
@@ -28,5 +31,6 @@ public class AdminExerciseSetRequest {
 
     private String thumbnailUrl;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isPublished")
     private boolean isPublished;
 }

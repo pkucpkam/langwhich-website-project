@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   FileText,
@@ -14,10 +14,14 @@ import {
   Loader2,
   Clock,
   Sparkles,
+  ChevronDown,
+  Folder,
+  Check,
 } from "lucide-react";
 import { theoryApi } from "@/api/theory.api";
-import type { TheoryLesson, Difficulty } from "@/types/theory";
+import type { TheoryLesson, Difficulty, TheoryTopic } from "@/types/theory";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/lib/utils";
 
@@ -25,10 +29,38 @@ export default function AdminLessonsPage() {
   const [lessons, setLessons] = useState<TheoryLesson[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Modal states
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    variant: "success" | "error";
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    variant: "success",
+  });
+
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 400);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | "ALL">("ALL");
+  const [topics, setTopics] = useState<TheoryTopic[]>([]);
+  const [selectedTopicId, setSelectedTopicId] = useState<number | "ALL">("ALL");
+  const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsTopicDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Pagination
   const [totalElements, setTotalElements] = useState(0);
@@ -41,6 +73,7 @@ export default function AdminLessonsPage() {
       const data = await theoryApi.getAllLessonsAdmin({
         search: debouncedSearch.trim() || undefined,
         difficulty: selectedDifficulty === "ALL" ? undefined : selectedDifficulty,
+        topicId: selectedTopicId === "ALL" ? undefined : selectedTopicId,
         page: currentPage,
         size: pageSize,
       });
@@ -51,29 +84,31 @@ export default function AdminLessonsPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedDifficulty, currentPage]);
+  }, [debouncedSearch, selectedDifficulty, selectedTopicId, currentPage]);
 
   useEffect(() => {
     loadLessons();
   }, [loadLessons]);
 
+  useEffect(() => {
+    const fetchTopics = async () => {
+      try {
+        const data = await theoryApi.getAllTopicsAdmin();
+        setTopics(data);
+      } catch (error) {
+        console.error("Failed to load topics", error);
+      }
+    };
+    fetchTopics();
+  }, []);
+
   // Reset page number on filter changes
   useEffect(() => {
     setCurrentPage(0);
-  }, [debouncedSearch, selectedDifficulty]);
+  }, [debouncedSearch, selectedDifficulty, selectedTopicId]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to permanently delete this lesson? This action is irreversible.")) {
-      return;
-    }
-
-    try {
-      await theoryApi.deleteLesson(id);
-      await loadLessons();
-    } catch (error) {
-      console.error("Failed to delete lesson", error);
-      alert("Error deleting lesson.");
-    }
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
   };
 
   const getDifficultyColor = (diff: Difficulty) => {
@@ -127,19 +162,93 @@ export default function AdminLessonsPage() {
 
       {/* Filters Area */}
       <section className="bg-neutral-card border border-neutral-border rounded-2xl p-6 space-y-4">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3 top-3.5 h-4 w-4 text-text-secondary" />
-            <input
-              type="text"
-              placeholder="Search by title, keywords, summary..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 text-sm rounded-xl border border-neutral-border bg-neutral-background text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            />
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto flex-1">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="absolute left-3 top-3.5 h-4 w-4 text-text-secondary" />
+              <input
+                type="text"
+                placeholder="Search by title, keywords, summary..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 text-sm rounded-xl border border-neutral-border bg-neutral-background text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div className="relative w-full sm:w-56 shrink-0" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsTopicDropdownOpen(!isTopicDropdownOpen)}
+                className={cn(
+                  "w-full flex items-center justify-between px-4 py-3 text-sm rounded-xl border bg-neutral-background text-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-sm",
+                  isTopicDropdownOpen 
+                    ? "border-primary ring-2 ring-primary/20" 
+                    : "border-neutral-border hover:border-text-secondary/50"
+                )}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <Folder className={cn("h-4 w-4 shrink-0", selectedTopicId !== "ALL" ? "text-primary" : "text-text-secondary")} />
+                  <span className="truncate font-medium">
+                    {selectedTopicId === "ALL" 
+                      ? "All Categories" 
+                      : topics.find(t => t.id === selectedTopicId)?.name || "All Categories"}
+                  </span>
+                </div>
+                <ChevronDown className={cn("h-4 w-4 text-text-secondary transition-transform duration-200", isTopicDropdownOpen && "rotate-180")} />
+              </button>
+
+              {isTopicDropdownOpen && (
+                <div className="absolute z-50 w-full mt-2 bg-neutral-card border border-neutral-border rounded-xl shadow-xl shadow-black/5 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 origin-top">
+                  <div className="max-h-64 overflow-y-auto p-1 scrollbar-thin">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTopicId("ALL");
+                        setIsTopicDropdownOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2.5 text-sm rounded-lg transition-all",
+                        selectedTopicId === "ALL" 
+                          ? "bg-primary/10 text-primary font-medium" 
+                          : "text-text-secondary hover:bg-neutral-background hover:text-text-primary"
+                      )}
+                    >
+                      <span>All Categories</span>
+                      {selectedTopicId === "ALL" && <Check className="h-4 w-4" />}
+                    </button>
+                    
+                    {topics.length > 0 && <div className="h-px bg-neutral-border/50 my-1 mx-2" />}
+                    
+                    {topics.map((topic) => (
+                      <button
+                        key={topic.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTopicId(topic.id);
+                          setIsTopicDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2.5 text-sm rounded-lg transition-all group",
+                          selectedTopicId === topic.id
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-text-secondary hover:bg-neutral-background hover:text-text-primary"
+                        )}
+                      >
+                        <span className="truncate pr-4">{topic.name}</span>
+                        {selectedTopicId === topic.id ? (
+                          <Check className="h-4 w-4 shrink-0" />
+                        ) : (
+                          <Folder className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
             {(["ALL", "BEGINNER", "INTERMEDIATE", "ADVANCED"] as const).map((diff) => (
               <button
                 key={diff}
@@ -288,6 +397,46 @@ export default function AdminLessonsPage() {
           </Button>
         </div>
       )}
+      {/* Reusable Modals */}
+      <Modal
+        isOpen={deleteId !== null}
+        title="Delete Lesson"
+        description="Are you sure you want to permanently delete this lesson? This action is irreversible."
+        variant="danger"
+        confirmLabel="Delete Lesson"
+        onConfirm={async () => {
+          if (deleteId === null) return;
+          try {
+            await theoryApi.deleteLesson(deleteId);
+            await loadLessons();
+            setAlertConfig({
+              isOpen: true,
+              title: "Lesson Deleted",
+              description: "The lesson has been successfully deleted.",
+              variant: "success",
+            });
+          } catch (error) {
+            console.error("Failed to delete lesson", error);
+            setAlertConfig({
+              isOpen: true,
+              title: "Deletion Failed",
+              description: "Error deleting lesson. Please try again.",
+              variant: "error",
+            });
+          } finally {
+            setDeleteId(null);
+          }
+        }}
+        onClose={() => setDeleteId(null)}
+      />
+
+      <Modal
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        variant={alertConfig.variant}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

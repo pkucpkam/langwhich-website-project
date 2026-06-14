@@ -2,24 +2,41 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { ExerciseSetDetail } from "../types";
 
+interface CheckedQuestionFeedback {
+  isCorrect: boolean;
+  score?: number;
+  maxScore?: number;
+  feedback?: string;
+  explanation?: string | null;
+  correctOptionId?: number | null;
+  correctAnswers?: string[] | null;
+}
+
 interface PracticeState {
   attemptId: number | null;
   exerciseSet: ExerciseSetDetail | null;
   currentQuestionIndex: number;
-  answers: Record<number, { selectedOptionId?: number | null; textAnswer?: string | null }>;
+  answers: Record<number, Record<string, unknown>>;
   savedAnswers: Record<number, boolean>;
   timerSeconds: number;
+  practiceMode: "INSTANT" | "ALL_AT_ONCE";
+  checkedQuestions: Record<number, CheckedQuestionFeedback>;
 
   initPractice: (attemptId: number, set: ExerciseSetDetail) => void;
   setQuestionIndex: (index: number) => void;
   updateAnswer: (
     questionId: number,
-    data: { selectedOptionId?: number | null; textAnswer?: string | null }
+    data: Record<string, unknown>
   ) => void;
   markAsSaved: (questionId: number, status: boolean) => void;
   incrementTimer: () => void;
   setTimer: (seconds: number) => void;
   clearPractice: () => void;
+  setPracticeMode: (mode: "INSTANT" | "ALL_AT_ONCE") => void;
+  markQuestionAsChecked: (
+    questionId: number,
+    feedback: CheckedQuestionFeedback
+  ) => void;
 }
 
 export const usePracticeStore = create<PracticeState>()(
@@ -31,6 +48,8 @@ export const usePracticeStore = create<PracticeState>()(
       answers: {},
       savedAnswers: {},
       timerSeconds: 0,
+      practiceMode: "ALL_AT_ONCE",
+      checkedQuestions: {},
 
       initPractice: (attemptId, exerciseSet) => {
         set((state) => {
@@ -44,6 +63,8 @@ export const usePracticeStore = create<PracticeState>()(
             answers: {},
             savedAnswers: {},
             timerSeconds: 0,
+            practiceMode: "ALL_AT_ONCE",
+            checkedQuestions: {},
           };
         });
       },
@@ -73,6 +94,16 @@ export const usePracticeStore = create<PracticeState>()(
       incrementTimer: () => set((state) => ({ timerSeconds: state.timerSeconds + 1 })),
       setTimer: (seconds) => set({ timerSeconds: seconds }),
 
+      setPracticeMode: (mode) => set({ practiceMode: mode }),
+
+      markQuestionAsChecked: (questionId, feedback) =>
+        set((state) => ({
+          checkedQuestions: {
+            ...state.checkedQuestions,
+            [questionId]: feedback,
+          },
+        })),
+
       clearPractice: () =>
         set({
           attemptId: null,
@@ -81,6 +112,8 @@ export const usePracticeStore = create<PracticeState>()(
           answers: {},
           savedAnswers: {},
           timerSeconds: 0,
+          practiceMode: "ALL_AT_ONCE",
+          checkedQuestions: {},
         }),
     }),
     {

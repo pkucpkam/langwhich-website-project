@@ -7,5 +7,5 @@ import java.util.List;
 
 @Repository
 public interface ExerciseQuestionRepository extends JpaRepository<ExerciseQuestion, Long> {
-    List<ExerciseQuestion> findAllByExerciseSetIdOrderBySortOrderAscIdAsc(Long exerciseSetId);
+    List<ExerciseQuestion> findAllByExerciseSectionExerciseSetIdOrderBySortOrderAscIdAsc(Long exerciseSetId);
 }

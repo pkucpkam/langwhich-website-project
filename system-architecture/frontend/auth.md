@@ -19,11 +19,13 @@ interface AuthState {
   accessToken: string | null;     // Token dùng để xác thực các request API ngắn hạn
   refreshToken: string | null;    // Token dùng để tự động cấp lại accessToken khi hết hạn
   isAuthenticated: boolean;       // Trạng thái đã đăng nhập hay chưa
+  _hasHydrated: boolean;          // Cờ kiểm tra Zustand store đã hoàn tất hydration từ localStorage chưa
 
   // --- Actions ---
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   clearAuth: () => void;
   updateTokens: (accessToken: string, refreshToken?: string) => void;
+  setHasHydrated: (state: boolean) => void;
 }
 ```
 
@@ -86,8 +88,8 @@ sequenceDiagram
 Sử dụng các component Wrapper để kiểm tra quyền truy cập trước khi render nội dung chính.
 
 * **Trang thông thường yêu cầu đăng nhập (`(protected)` pages)**:
-  * Đọc `isAuthenticated` từ `useAuthStore`.
-  * Nếu `loading === false` và `isAuthenticated === false`, dùng `useRouter()` hoặc `redirect()` để chuyển hướng sang `/auth/login`.
+  * Đọc `isAuthenticated` và `_hasHydrated` từ `useAuthStore`.
+  * Chỉ thực hiện kiểm tra quyền truy cập và chuyển hướng khi `_hasHydrated === true`. Nếu `isAuthenticated === false`, dùng `useRouter()` hoặc `redirect()` để chuyển hướng sang `/auth/login`. Việc này ngăn chặn triệt để tình trạng race condition khi người dùng tải lại trang (F5) khiến hệ thống ngộ nhận người dùng chưa đăng nhập trước khi store kịp load dữ liệu từ localStorage.
 * **Trang Admin (`(admin)` pages)**:
-  * Đọc `user` và kiểm tra `user.role === 'ADMIN'`.
-  * Nếu không phải Admin, chuyển hướng về trang chủ `/` kèm thông báo từ chối quyền truy cập.
+  * Đọc `user`, `_hasHydrated` và kiểm tra `user.role === 'ADMIN'`.
+  * Đợi `_hasHydrated === true` trước khi chuyển hướng trái phép hoặc chuyển tiếp nội dung. Nếu không phải Admin, chuyển hướng về trang chủ `/` kèm thông báo từ chối quyền truy cập.

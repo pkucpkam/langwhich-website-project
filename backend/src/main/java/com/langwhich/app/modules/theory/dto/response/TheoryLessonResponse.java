@@ -33,9 +33,9 @@ public class TheoryLessonResponse {
         if (lesson == null) return null;
         return TheoryLessonResponse.builder()
             .id(lesson.getId())
-            .topicId(lesson.getTopic().getId())
-            .topicName(lesson.getTopic().getName())
-            .topicSlug(lesson.getTopic().getSlug())
+            .topicId(lesson.getTopic() != null ? lesson.getTopic().getId() : null)
+            .topicName(lesson.getTopic() != null ? lesson.getTopic().getName() : "General Lessons")
+            .topicSlug(lesson.getTopic() != null ? lesson.getTopic().getSlug() : "general")
             .title(lesson.getTitle())
             .slug(lesson.getSlug())
             .summary(lesson.getSummary())

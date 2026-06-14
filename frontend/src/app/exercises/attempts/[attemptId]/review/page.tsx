@@ -276,89 +276,173 @@ export default function PracticeReviewPage() {
                   </div>
 
                   {/* Question Sub-render based on type */}
-                  {q.type === "MULTIPLE_CHOICE" ? (
-                    <div className="grid grid-cols-1 gap-2.5">
-                      {q.options?.map((opt, oIdx) => {
-                        const letter = String.fromCharCode(65 + oIdx);
-                        const isUserSelection = uAns?.selectedOptionId === opt.id;
-                        const isCorrectOption = opt.isCorrect;
+                  {(() => {
+                    const metadata = q.metadata as Record<string, any> | undefined;
+                    const payload = uAns?.payload as Record<string, any> | undefined;
+
+                    switch (q.type) {
+                      case "MULTIPLE_CHOICE": {
+                        const mcOptions = q.options ?? metadata?.options?.map((o: any, idx: number) => ({
+                          id: idx,
+                          optionText: o.optionText ? o.optionText : (o.key && o.content ? `${o.key}. ${o.content}` : o.content || ""),
+                          isCorrect: o.isCorrect === true || String(o.isCorrect).toLowerCase() === "true" || (metadata?.correctAnswer && o.key === metadata.correctAnswer),
+                        })) ?? [];
+
+                        const activeOptionId = payload?.selectedOptionId as number | undefined;
 
                         return (
-                          <div
-                            key={opt.id}
-                            className={cn(
-                              "flex items-center gap-3.5 w-full p-4 rounded-xl border text-sm font-medium",
-                              isCorrectOption
-                                ? "bg-green-500/10 border-green-500/30 text-green-400"
-                                : isUserSelection
-                                ? "bg-red-500/10 border-red-500/30 text-red-400"
-                                : "bg-neutral-background border-neutral-border/50 text-text-secondary"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "w-7.5 h-7.5 rounded-lg flex items-center justify-center font-bold text-xs",
-                                isCorrectOption
-                                  ? "bg-green-500 text-white"
-                                  : isUserSelection
-                                  ? "bg-red-500 text-white"
-                                  : "bg-neutral-border text-text-secondary"
-                              )}
-                            >
-                              {letter}
-                            </span>
-                            <span className="flex-1">{opt.optionText}</span>
-                            
-                            {isCorrectOption && (
-                              <span className="text-[10px] uppercase font-bold tracking-widest text-green-400">
-                                Correct Answer
-                              </span>
-                            )}
-                            {isUserSelection && !isCorrectOption && (
-                              <span className="text-[10px] uppercase font-bold tracking-widest text-red-400">
-                                Your Selection
-                              </span>
-                            )}
-                            {isUserSelection && isCorrectOption && (
-                              <span className="text-[10px] uppercase font-bold tracking-widest text-green-400">
-                                Your Correct Selection
-                              </span>
-                            )}
+                          <div className="grid grid-cols-1 gap-2.5">
+                            {mcOptions.map((opt: any, oIdx: number) => {
+                              const letter = String.fromCharCode(65 + oIdx);
+                              const isUserSelection = activeOptionId === opt.id || uAns?.selectedOptionId === opt.id;
+                              const isCorrectOption = opt.isCorrect;
+
+                              return (
+                                <div
+                                  key={opt.id}
+                                  className={cn(
+                                    "flex items-center gap-3.5 w-full p-4 rounded-xl border text-sm font-medium",
+                                    isCorrectOption
+                                      ? "bg-green-500/10 border-green-500/30 text-green-400"
+                                      : isUserSelection
+                                      ? "bg-red-500/10 border-red-500/30 text-red-400"
+                                      : "bg-neutral-background border-neutral-border/50 text-text-secondary"
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      "w-8 h-8 shrink-0 rounded-lg flex items-center justify-center font-bold text-sm",
+                                      isCorrectOption
+                                        ? "bg-green-500 text-white"
+                                        : isUserSelection
+                                        ? "bg-red-500 text-white"
+                                        : "bg-neutral-border text-text-secondary"
+                                    )}
+                                  >
+                                    {letter}
+                                  </span>
+                                  <span className="flex-1">{opt.optionText}</span>
+                                  
+                                  {isCorrectOption && (
+                                    <span className="text-[10px] uppercase font-bold tracking-widest text-green-400">
+                                      Correct Answer
+                                    </span>
+                                  )}
+                                  {isUserSelection && !isCorrectOption && (
+                                    <span className="text-[10px] uppercase font-bold tracking-widest text-red-400">
+                                      Your Selection
+                                    </span>
+                                  )}
+                                  {isUserSelection && isCorrectOption && (
+                                    <span className="text-[10px] uppercase font-bold tracking-widest text-green-400">
+                                      Your Correct Selection
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         );
-                      })}
-                    </div>
-                  ) : (
-                    // Fill in Blank feedback format
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      
-                      {/* Student's answer */}
-                      <div className="bg-neutral-background border border-neutral-border rounded-xl p-4 space-y-1">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-text-secondary block">
-                          Your Input
-                        </span>
-                        <span
-                          className={cn(
-                            "text-base font-bold",
-                            isCorrect ? "text-green-400" : "text-red-400"
-                          )}
-                        >
-                          {uAns?.textAnswer || "(No Answer Entered)"}
-                        </span>
-                      </div>
+                      }
+                      case "FILL_IN_BLANK": {
+                        const userText = payload?.textAnswer ?? uAns?.textAnswer ?? "";
+                        const accepted = q.correctAnswers ?? metadata?.acceptedAnswers ?? [];
 
-                      {/* Correct answers */}
-                      <div className="bg-neutral-background border border-neutral-border rounded-xl p-4 space-y-1">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-text-secondary block">
-                          Accepted Answer(s)
-                        </span>
-                        <span className="text-base font-bold text-green-400">
-                          {q.correctAnswers?.join("  /  ") || "N/A"}
-                        </span>
-                      </div>
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-neutral-background border border-neutral-border rounded-xl p-4 space-y-1">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-text-secondary block">
+                                Your Input
+                              </span>
+                              <span className={cn("text-base font-bold", isCorrect ? "text-green-400" : "text-red-400")}>
+                                {userText || "(No Answer Entered)"}
+                              </span>
+                            </div>
+                            <div className="bg-neutral-background border border-neutral-border rounded-xl p-4 space-y-1">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-text-secondary block">
+                                Accepted Answer(s)
+                              </span>
+                              <span className="text-base font-bold text-green-400">
+                                {accepted.join("  /  ") || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      case "FIND_AND_CORRECT": {
+                        const userMistake = payload?.selectedMistake ?? "";
+                        const userCorrection = payload?.correction ?? "";
+                        const targetMistake = metadata?.mistakeText ?? "";
+                        const acceptedCorrections = metadata?.acceptedAnswers ?? [];
 
-                    </div>
-                  )}
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-neutral-background border border-neutral-border rounded-xl p-4 space-y-2">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-text-secondary block">
+                                Your Input
+                              </span>
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold">
+                                  Incorrect Part:{" "}
+                                  <span className={cn(isCorrect ? "text-green-400" : "text-red-400")}>
+                                    &quot;{userMistake || "(None)"}&quot;
+                                  </span>
+                                </p>
+                                <p className="text-sm font-semibold">
+                                  Correction:{" "}
+                                  <span className={cn(isCorrect ? "text-green-400" : "text-red-400")}>
+                                    &quot;{userCorrection || "(None)"}&quot;
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="bg-neutral-background border border-neutral-border rounded-xl p-4 space-y-2">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-text-secondary block">
+                                Correct Mistake &amp; Corrections
+                              </span>
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-green-400">
+                                  Mistake Word: &quot;{targetMistake}&quot;
+                                </p>
+                                <p className="text-sm font-semibold text-green-400">
+                                  Accepted: {acceptedCorrections.join(" or ")}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      case "SENTENCE_REWRITE": {
+                        const userRewrite = payload?.text ?? "";
+                        const acceptedRewrites = q.correctAnswers ?? metadata?.acceptedAnswers ?? [];
+
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-neutral-background border border-neutral-border rounded-xl p-4 space-y-1">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-text-secondary block">
+                                Your Input
+                              </span>
+                              <span className={cn("text-base font-bold", isCorrect ? "text-green-400" : "text-red-400")}>
+                                {userRewrite || "(No Answer Entered)"}
+                              </span>
+                            </div>
+                            <div className="bg-neutral-background border border-neutral-border rounded-xl p-4 space-y-1.5">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-text-secondary block">
+                                Accepted Answer(s)
+                              </span>
+                              <ul className="list-disc pl-5 text-sm font-bold text-green-400 space-y-0.5">
+                                {acceptedRewrites.map((ans: string, i: number) => (
+                                  <li key={i}>{ans}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        );
+                      }
+                      default:
+                        return null;
+                    }
+                  })()}
 
                   {/* Comprehensive feedback explanation */}
                   {q.explanation && (

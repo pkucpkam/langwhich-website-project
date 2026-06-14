@@ -98,6 +98,10 @@ export function QuickImportForm({ mode, setId, onSuccess, onCancel }: QuickImpor
   const [totalSteps, setTotalSteps] = useState(0);
   const [importLogs, setImportLogs] = useState<string[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
+  
+  // Success Modal States
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successTargetId, setSuccessTargetId] = useState<number | null>(null);
 
   // Load example initially
   useEffect(() => {
@@ -202,13 +206,17 @@ export function QuickImportForm({ mode, setId, onSuccess, onCancel }: QuickImpor
         };
 
         if (q.type === "MULTIPLE_CHOICE") {
-          questionPayload.options = q.options?.map((opt, idx) => ({
-            optionText: opt.optionText,
-            isCorrect: opt.isCorrect,
-            sortOrder: idx,
-          }));
+          questionPayload.metadata = {
+            options: q.options?.map((opt, idx) => ({
+              optionText: opt.optionText,
+              isCorrect: opt.isCorrect,
+              sortOrder: idx,
+            }))
+          };
         } else {
-          questionPayload.correctAnswers = q.correctAnswers;
+          questionPayload.metadata = {
+            acceptedAnswers: q.correctAnswers
+          };
         }
 
         await exerciseApi.adminCreateQuestion(targetSetId, questionPayload);
@@ -223,16 +231,8 @@ export function QuickImportForm({ mode, setId, onSuccess, onCancel }: QuickImpor
 
       setTimeout(() => {
         setIsImporting(false);
-        alert(mode === "full"
-          ? "Quick Test imported successfully! Redirecting to Exercise editor..."
-          : "Questions imported successfully!"
-        );
-
-        if (onSuccess) {
-          onSuccess(targetSetId!);
-        } else {
-          router.push(`/admin/exercises/${targetSetId}/edit?tab=questions`);
-        }
+        setSuccessTargetId(targetSetId!);
+        setShowSuccessModal(true);
       }, 1000);
 
     } catch (err: any) {
@@ -380,7 +380,7 @@ export function QuickImportForm({ mode, setId, onSuccess, onCancel }: QuickImpor
             Interactive Parse Preview
           </label>
 
-          <div className="border border-neutral-border rounded-2xl bg-neutral-card/45 h-[450px] flex flex-col overflow-hidden">
+          <div className="border border-neutral-border rounded-2xl bg-neutral-card/45 h-[530px] flex flex-col overflow-hidden">
             {!parsedData ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-text-secondary space-y-3">
                 <FileText className="h-10 w-10 opacity-40 text-text-secondary" />
@@ -390,10 +390,10 @@ export function QuickImportForm({ mode, setId, onSuccess, onCancel }: QuickImpor
                 </p>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 {/* Parsed Metadata Header (Mode Full) */}
                 {mode === "full" && (
-                  <div className="bg-neutral-card border-b border-neutral-border p-4 space-y-2.5">
+                  <div className="bg-neutral-card border-b border-neutral-border p-4 space-y-2.5 shrink-0">
                     <div className="flex items-center gap-2">
                       <BookOpen className="h-4 w-4 text-primary shrink-0" />
                       <span className="text-[11px] uppercase tracking-widest font-bold text-text-secondary">Parsed Metadata</span>
@@ -427,33 +427,43 @@ export function QuickImportForm({ mode, setId, onSuccess, onCancel }: QuickImpor
                   )}
 
                   {parsedData.questions.map((q, idx) => (
-                    <div key={idx} className="bg-neutral-card border border-neutral-border rounded-xl p-3.5 space-y-2.5 transition-all hover:border-neutral-border/80">
-                      <div className="flex items-center justify-between border-b border-neutral-border/40 pb-1.5">
-                        <span className="text-[10px] font-bold bg-neutral-background px-2 py-0.5 rounded border border-neutral-border/30 text-text-secondary">
-                          Question {idx + 1} • {q.type === "MULTIPLE_CHOICE" ? "MC" : "FIB"}
+                    <div key={idx} className="bg-neutral-card border border-neutral-border rounded-xl p-5 space-y-4 transition-all hover:border-neutral-border/80 hover:shadow-lg duration-200">
+                      <div className="flex items-center justify-between border-b border-neutral-border/40 pb-3">
+                        <span className="text-xs font-bold bg-neutral-background px-3 py-1 rounded-lg border border-neutral-border/30 text-text-secondary tracking-wide">
+                          Question {idx + 1} • {q.type === "MULTIPLE_CHOICE" ? "Multiple Choice" : "Fill in the Blank"}
                         </span>
-                        <span className="text-[10px] font-bold text-primary">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary">
                           {q.points} Point{q.points !== 1 ? "s" : ""}
                         </span>
                       </div>
 
-                      <p className="text-[11px] font-semibold text-text-primary leading-relaxed">{q.questionText}</p>
+                      <p className="text-sm md:text-base font-semibold text-text-primary leading-relaxed">{q.questionText}</p>
 
                       {/* Display MC options */}
                       {q.type === "MULTIPLE_CHOICE" && q.options && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                           {q.options.map((opt, oIdx) => (
                             <div
                               key={oIdx}
                               className={cn(
-                                "p-2 rounded-lg border text-[10px] font-semibold flex items-center justify-between gap-1.5",
+                                "p-3 rounded-xl border text-xs md:text-sm font-semibold flex items-center justify-between gap-3 transition-all duration-150",
                                 opt.isCorrect
-                                  ? "bg-emerald-500/5 border-emerald-500/25 text-emerald-400"
-                                  : "bg-neutral-background/50 border-neutral-border/60 text-text-secondary"
+                                  ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-sm shadow-emerald-500/5"
+                                  : "bg-neutral-background/50 border-neutral-border/60 text-text-secondary hover:border-neutral-border hover:bg-neutral-background/80"
                               )}
                             >
-                              <span className="truncate">{String.fromCharCode(65 + oIdx)}. {opt.optionText}</span>
-                              {opt.isCorrect && <CheckCircle className="h-3 w-3 shrink-0 text-emerald-400" />}
+                              <div className="flex items-center gap-2.5 truncate">
+                                <span className={cn(
+                                  "w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shrink-0",
+                                  opt.isCorrect
+                                    ? "bg-emerald-500/20 text-emerald-400"
+                                    : "bg-neutral-background text-text-secondary border border-neutral-border/50"
+                                )}>
+                                  {String.fromCharCode(65 + oIdx)}
+                                </span>
+                                <span className="truncate">{opt.optionText}</span>
+                              </div>
+                              {opt.isCorrect && <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />}
                             </div>
                           ))}
                         </div>
@@ -461,31 +471,36 @@ export function QuickImportForm({ mode, setId, onSuccess, onCancel }: QuickImpor
 
                       {/* Display FIB accepted answers */}
                       {q.type === "FILL_IN_BLANK" && q.correctAnswers && (
-                        <div className="flex flex-wrap gap-1">
-                          <span className="text-[9px] font-bold text-text-secondary uppercase tracking-widest self-center mr-1">Correct answers:</span>
-                          {q.correctAnswers.map((ansVal, aIdx) => (
-                            <span
-                              key={aIdx}
-                              className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded text-[10px] font-bold"
-                            >
-                              {ansVal}
-                            </span>
-                          ))}
+                        <div className="flex flex-col gap-2 pt-1">
+                          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Correct Answers:</span>
+                          <div className="flex flex-wrap gap-2">
+                            {q.correctAnswers.map((ansVal, aIdx) => (
+                              <span
+                                key={aIdx}
+                                className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-lg text-xs font-bold"
+                              >
+                                {ansVal}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       )}
 
                       {/* Display Explanation */}
                       {q.explanation && (
-                        <p className="text-[10px] italic text-text-secondary bg-neutral-background/40 border border-neutral-border/20 p-2 rounded-lg leading-normal">
-                          💡 <span className="font-semibold text-text-primary">Reasoning:</span> {q.explanation}
-                        </p>
+                        <div className="text-xs leading-relaxed text-text-secondary bg-neutral-background/60 border border-neutral-border/30 border-l-2 border-l-amber-500/80 p-3.5 rounded-r-xl">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-500 uppercase tracking-wider text-[10px] mb-1">
+                            <span>💡 Reasoning</span>
+                          </div>
+                          <p className="italic">{q.explanation}</p>
+                        </div>
                       )}
                     </div>
                   ))}
                 </div>
 
                 {/* Import triggers */}
-                <div className="p-4 bg-neutral-card border-t border-neutral-border flex gap-3">
+                <div className="p-4 bg-neutral-card border-t border-neutral-border flex gap-3 shrink-0">
                   <Button
                     type="button"
                     variant="primary"
@@ -546,6 +561,41 @@ export function QuickImportForm({ mode, setId, onSuccess, onCancel }: QuickImpor
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUCCESS MODAL OVERLAY */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-neutral-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-neutral-card border border-neutral-border rounded-2xl max-w-sm w-full p-8 text-center space-y-6 shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+            <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-2">
+              <CheckCircle className="h-8 w-8 text-emerald-400" />
+            </div>
+            
+            <div>
+              <h3 className="font-bold text-text-primary text-xl mb-2">Import Successful!</h3>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                {mode === "full"
+                  ? "Your Quick Test has been successfully created and saved to the database."
+                  : "The selected questions have been imported successfully."}
+              </p>
+            </div>
+
+            <Button
+              variant="primary"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3"
+              onClick={() => {
+                setShowSuccessModal(false);
+                if (onSuccess) {
+                  onSuccess(successTargetId!);
+                } else {
+                  router.push(`/admin/exercises/${successTargetId}/edit?tab=questions`);
+                }
+              }}
+            >
+              Continue
+            </Button>
           </div>
         </div>
       )}

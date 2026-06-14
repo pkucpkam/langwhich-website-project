@@ -121,6 +121,7 @@ export const theoryApi = {
   getAllLessonsAdmin: async (params: {
     search?: string;
     difficulty?: Difficulty;
+    topicId?: number;
     page?: number;
     size?: number;
   }): Promise<PaginatedResponse<TheoryLesson>> => {

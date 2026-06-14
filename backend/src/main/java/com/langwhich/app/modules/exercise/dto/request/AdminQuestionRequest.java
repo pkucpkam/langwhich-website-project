@@ -1,6 +1,6 @@
 package com.langwhich.app.modules.exercise.dto.request;
 
-import jakarta.validation.Valid;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -8,16 +8,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminQuestionRequest {
 
+    private Long exerciseSectionId;
+
     @NotBlank(message = "Question type is required")
-    private String type; // e.g. MULTIPLE_CHOICE, FILL_IN_BLANK
+    private String type; // e.g. MULTIPLE_CHOICE, FILL_IN_BLANK, FIND_AND_CORRECT, SENTENCE_REWRITE
 
     @NotBlank(message = "Question text is required")
     private String questionText;
@@ -29,8 +29,9 @@ public class AdminQuestionRequest {
 
     private int sortOrder;
 
-    @Valid
-    private List<AdminQuestionOptionRequest> options; // Used for MULTIPLE_CHOICE
+    private JsonNode metadata; // Flexible JSONB metadata
 
-    private List<String> correctAnswers; // Used for FILL_IN_BLANK (multiple accepted)
+    private JsonNode grammarTags; // e.g. ["present-simple", "verbs"]
+
+    private JsonNode skillTags; // e.g. ["grammar", "reading"]
 }

@@ -14,9 +14,12 @@ import {
   TrendingUp,
   Bookmark,
   Share2,
+  Sparkles,
 } from "lucide-react";
 import { theoryApi } from "@/api/theory.api";
 import type { TheoryLesson, Difficulty, LessonNavigation } from "@/types/theory";
+import { exerciseApi } from "@/features/exercise/api";
+import type { ExerciseSet } from "@/features/exercise/types";
 import { TiptapRenderer } from "@/components/features/theory/TiptapRenderer";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
@@ -35,6 +38,7 @@ export default function LessonReaderPage() {
   const [lesson, setLesson] = useState<TheoryLesson | null>(null);
   const [relatedLessons, setRelatedLessons] = useState<TheoryLesson[]>([]);
   const [siblings, setSiblings] = useState<LessonNavigation>({ previous: null, next: null });
+  const [lessonExercises, setLessonExercises] = useState<ExerciseSet[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Layout states
@@ -49,16 +53,44 @@ export default function LessonReaderPage() {
     try {
       const doc = JSON.parse(jsonString);
       const items: TocItem[] = [];
+      const idCounts = new Map<string, number>();
+
+      const getRawText = (n: any): string => {
+        if (n.type === "text" && n.text) {
+          return n.text;
+        }
+        if (n.content) {
+          return n.content.map(getRawText).join("");
+        }
+        return "";
+      };
 
       const traverse = (node: any) => {
         if (node.type === "heading" && node.content) {
-          const text = node.content.map((c: any) => c.text).join("");
-          const id = text
+          const text = getRawText(node);
+          let baseId = text
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "D")
             .toLowerCase()
             .replace(/[^\w\s-]/g, "")
-            .replace(/[\s_-]+/g, "-");
+            .replace(/[\s_-]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+          
+          if (!baseId) {
+            baseId = "heading";
+          }
+
+          let uniqueId = baseId;
+          const count = idCounts.get(baseId) || 0;
+          if (count > 0) {
+            uniqueId = `${baseId}-${count}`;
+          }
+          idCounts.set(baseId, count + 1);
+
           const level = node.attrs?.level || 1;
-          items.push({ text, id, level });
+          items.push({ text, id: uniqueId, level });
         }
         if (node.content) {
           node.content.forEach(traverse);
@@ -90,6 +122,14 @@ export default function LessonReaderPage() {
       // Load sibling navigation
       const nav = await theoryApi.getLessonNavigation(lessonData.id, lessonData.topicId);
       setSiblings(nav);
+
+      // Load associated exercises
+      try {
+        const exercisesResponse = await exerciseApi.getExerciseSets({ lessonId: lessonData.id, size: 5 });
+        setLessonExercises(exercisesResponse.content || []);
+      } catch (err) {
+        console.error("Failed to load lesson exercises", err);
+      }
     } catch (error) {
       console.error("Failed to load lesson details", error);
       router.push("/theory");
@@ -288,7 +328,7 @@ export default function LessonReaderPage() {
               <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary border-b border-neutral-border/60 pb-2">
                 Table of Contents
               </h3>
-              <nav className="space-y-1.5 text-xs font-medium">
+              <nav className="space-y-1 font-medium">
                 {toc.map((item) => (
                   <a
                     key={item.id}
@@ -298,9 +338,14 @@ export default function LessonReaderPage() {
                       document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
                     }}
                     className={cn(
-                      "block transition-colors hover:text-primary leading-relaxed",
-                      item.level === 2 ? "pl-3 text-text-secondary" : "text-text-secondary",
-                      activeId === item.id ? "text-primary border-l-2 border-primary pl-2.5 font-semibold" : ""
+                      "block transition-all duration-200 hover:text-primary leading-relaxed border-l-2 py-1",
+                      item.level === 1 ? "pl-3 text-sm font-bold text-text-primary" : "",
+                      item.level === 2 ? "pl-6 text-[13px] text-text-secondary" : "",
+                      item.level === 3 ? "pl-9 text-xs text-text-secondary/90" : "",
+                      item.level >= 4 ? "pl-12 text-[11px] text-text-secondary/70" : "",
+                      activeId === item.id 
+                        ? "border-primary text-primary font-semibold bg-primary/5" 
+                        : "border-transparent"
                     )}
                   >
                     {item.text}
@@ -388,6 +433,48 @@ export default function LessonReaderPage() {
                     <span>{item.estimatedMinutes}m read</span>
                     <span className="flex items-center gap-0.5 text-primary group-hover:translate-x-0.5 transition-transform">
                       Read <ChevronRight className="h-3 w-3" />
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Associated Exercises */}
+      {lessonExercises.length > 0 && (
+        <section className="space-y-6 pt-10 border-t border-neutral-border/60">
+          <div>
+            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span>Practice Exercises</span>
+            </h2>
+            <p className="text-xs text-text-secondary mt-0.5">Test your knowledge on this specific lesson.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {lessonExercises.map((exercise) => (
+              <Link key={exercise.id} href={`/exercises/${exercise.id}`}>
+                <Card className="hover:scale-[1.01] hover:border-primary/40 transition-all duration-200 group h-full flex flex-col justify-between cursor-pointer p-5 bg-neutral-card border border-neutral-border">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-bold border", getDifficultyColor(exercise.difficulty))}>
+                        {exercise.difficulty}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] text-text-secondary">
+                        <Clock className="h-3.5 w-3.5" />
+                        {exercise.estimatedMinutes}m
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-text-primary text-sm line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                      {exercise.title}
+                    </h3>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-text-secondary pt-4 mt-4 border-t border-neutral-border/40">
+                    <span>{exercise.questionCount} questions</span>
+                    <span className="flex items-center gap-1 text-primary group-hover:translate-x-0.5 transition-transform font-semibold">
+                      Start <ChevronRight className="h-3 w-3" />
                     </span>
                   </div>
                 </Card>

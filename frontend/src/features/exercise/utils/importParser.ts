@@ -100,6 +100,11 @@ export function parseQuickImportText(text: string): ParsedImportData {
         questionBlocks.push(currentBlock);
         currentBlock = [];
       } else if (trimmedLine !== "") {
+        const isNewQ = /^\d+[\.\)]/.test(trimmedLine) || (trimmedLine.toLowerCase().startsWith("q") && /^[qQ]\d+[\.\):]/.test(trimmedLine));
+        if (isNewQ && currentBlock.length > 0) {
+          questionBlocks.push(currentBlock);
+          currentBlock = [];
+        }
         currentBlock.push(trimmedLine);
       }
     }

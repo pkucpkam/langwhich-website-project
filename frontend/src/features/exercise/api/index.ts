@@ -12,6 +12,8 @@ import type {
   AdminExerciseSetDetail,
   AdminExerciseSetRequest,
   AdminQuestionRequest,
+  AdminExerciseSection,
+  AdminExerciseSectionRequest,
 } from "../types";
 
 export interface PaginationResponse<T> {
@@ -31,6 +33,7 @@ export interface PaginationResponse<T> {
 export const exerciseApi = {
   getExerciseSets: async (params?: {
     topicSlug?: string;
+    lessonId?: number;
     difficulty?: string;
     search?: string;
     page?: number;
@@ -48,9 +51,11 @@ export const exerciseApi = {
     return response.data;
   },
 
-  startAttempt: async (id: number): Promise<StartAttemptResponse> => {
+  startAttempt: async (id: number, forceNew?: boolean): Promise<StartAttemptResponse> => {
     const response = await vocabApiClient.post<StartAttemptResponse>(
-      `/exercises/${id}/start`
+      `/exercises/${id}/start`,
+      null,
+      { params: forceNew !== undefined ? { forceNew } : undefined }
     );
     return response.data;
   },
@@ -85,6 +90,10 @@ export const exerciseApi = {
       `/exercises/attempts/${attemptId}/review`
     );
     return response.data;
+  },
+
+  deleteAttempt: async (attemptId: number): Promise<void> => {
+    await vocabApiClient.delete(`/exercises/attempts/${attemptId}`);
   },
 
   // ===== ADMIN APIS =====
@@ -130,6 +139,30 @@ export const exerciseApi = {
     );
     return response.data;
   },
+
+  // ===== ADMIN SECTIONS =====
+
+  adminCreateSection: async (setId: number, data: AdminExerciseSectionRequest): Promise<AdminExerciseSection> => {
+    const response = await vocabApiClient.post<AdminExerciseSection>(
+      `/admin/exercise-sets/${setId}/sections`,
+      data
+    );
+    return response.data;
+  },
+
+  adminUpdateSection: async (sectionId: number, data: AdminExerciseSectionRequest): Promise<AdminExerciseSection> => {
+    const response = await vocabApiClient.put<AdminExerciseSection>(
+      `/admin/sections/${sectionId}`,
+      data
+    );
+    return response.data;
+  },
+
+  adminDeleteSection: async (sectionId: number): Promise<void> => {
+    await vocabApiClient.delete(`/admin/sections/${sectionId}`);
+  },
+
+  // ===== ADMIN QUESTIONS =====
 
   adminCreateQuestion: async (setId: number, data: AdminQuestionRequest): Promise<AdminQuestion> => {
     const response = await vocabApiClient.post<AdminQuestion>(

@@ -1,15 +1,16 @@
 package com.langwhich.app.modules.exercise.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.langwhich.app.modules.theory.entity.Difficulty;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "exercise_questions", indexes = {
-    @Index(name = "idx_exercise_questions_set", columnList = "exercise_set_id")
+    @Index(name = "idx_exercise_questions_section", columnList = "exercise_section_id")
 })
 @Getter
 @Setter
@@ -23,8 +24,8 @@ public class ExerciseQuestion {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "exercise_set_id", nullable = false)
-    private ExerciseSet exerciseSet;
+    @JoinColumn(name = "exercise_section_id", nullable = false)
+    private ExerciseSection exerciseSection;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -48,14 +49,17 @@ public class ExerciseQuestion {
     @Builder.Default
     private int sortOrder = 0;
 
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    @OrderBy("sortOrder ASC, id ASC")
-    private List<QuestionOption> options = new ArrayList<>();
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private JsonNode metadata;
 
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<QuestionAnswer> answers = new ArrayList<>();
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "grammar_tags", columnDefinition = "jsonb")
+    private JsonNode grammarTags;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "skill_tags", columnDefinition = "jsonb")
+    private JsonNode skillTags;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

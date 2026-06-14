@@ -77,7 +77,7 @@ public class TheoryController {
     @GetMapping("/lessons/{id}/related")
     public ResponseEntity<List<TheoryLessonResponse>> getRelatedLessons(
         @PathVariable Long id,
-        @RequestParam Long topicId
+        @RequestParam(required = false) Long topicId
     ) {
         return ResponseEntity.ok(theoryService.getRelatedLessons(topicId, id));
     }
@@ -85,7 +85,7 @@ public class TheoryController {
     @GetMapping("/lessons/{id}/navigation")
     public ResponseEntity<Map<String, Object>> getLessonNavigation(
         @PathVariable Long id,
-        @RequestParam Long topicId
+        @RequestParam(required = false) Long topicId
     ) {
         TheoryLessonResponse current = theoryService.getLessonById(id);
         TheoryLessonResponse previous = theoryService.getPreviousLesson(topicId, current.getCreatedAt());

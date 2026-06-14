@@ -2,6 +2,7 @@ package com.langwhich.app.modules.exercise.entity;
 
 import com.langwhich.app.modules.theory.entity.Difficulty;
 import com.langwhich.app.modules.theory.entity.TheoryTopic;
+import com.langwhich.app.modules.theory.entity.TheoryLesson;
 import com.langwhich.app.modules.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -34,6 +35,10 @@ public class ExerciseSet {
     @JoinColumn(name = "topic_id")
     private TheoryTopic topic;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lesson_id")
+    private TheoryLesson lesson;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private Difficulty difficulty;
@@ -56,7 +61,7 @@ public class ExerciseSet {
     @OneToMany(mappedBy = "exerciseSet", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     @OrderBy("sortOrder ASC, id ASC")
-    private List<ExerciseQuestion> questions = new ArrayList<>();
+    private List<ExerciseSection> sections = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

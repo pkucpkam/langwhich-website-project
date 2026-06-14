@@ -20,7 +20,7 @@ import type { ExerciseSet, Difficulty } from "@/features/exercise/types";
 import { Button } from "@/components/ui/Button";
 import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/lib/utils";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Modal } from "@/components/ui/Modal";
 
 export default function AdminExercisesPage() {
   const [exercises, setExercises] = useState<ExerciseSet[]>([]);
@@ -42,6 +42,18 @@ export default function AdminExercisesPage() {
   const [previewSetId, setPreviewSetId] = useState<number | null>(null);
   const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    variant: "success" | "error";
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    variant: "success",
+  });
 
   const loadExercises = useCallback(async () => {
     setLoading(true);
@@ -81,9 +93,20 @@ export default function AdminExercisesPage() {
       setExercises((prev) =>
         prev.map((ex) => (ex.id === id ? { ...ex, isPublished: !currentPublish } : ex))
       );
+      setAlertConfig({
+        isOpen: true,
+        title: "Status Updated",
+        description: !currentPublish ? "Exercise set is now published!" : "Exercise set reverted to draft.",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Failed to toggle publish status", error);
-      alert("Error toggling publish status.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Update Failed",
+        description: "Error toggling publish status.",
+        variant: "error",
+      });
     }
   };
 
@@ -93,9 +116,20 @@ export default function AdminExercisesPage() {
       await exerciseApi.adminDeleteExerciseSet(deleteTargetId);
       setDeleteTargetId(null);
       await loadExercises();
+      setAlertConfig({
+        isOpen: true,
+        title: "Exercise Set Deleted",
+        description: "The exercise set has been successfully deleted.",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Failed to delete exercise set", error);
-      alert("Error deleting exercise set.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Deletion Failed",
+        description: "Error deleting exercise set.",
+        variant: "error",
+      });
     }
   };
 
@@ -104,10 +138,17 @@ export default function AdminExercisesPage() {
     setLoadingPreview(true);
     try {
       const data = await exerciseApi.adminGetExerciseSetDetail(id);
-      setPreviewQuestions(data.questions || []);
+      const flatQuestions = data.sections?.flatMap((s) => s.questions) ?? [];
+      setPreviewQuestions(flatQuestions);
     } catch (error) {
       console.error("Failed to load preview details", error);
-      alert("Failed to load practice preview.");
+      setPreviewSetId(null);
+      setAlertConfig({
+        isOpen: true,
+        title: "Load Failed",
+        description: "Failed to load practice preview.",
+        variant: "error",
+      });
     } finally {
       setLoadingPreview(false);
     }
@@ -349,13 +390,22 @@ export default function AdminExercisesPage() {
       )}
 
       {/* Delete Confirmation dialogue */}
-      <ConfirmModal
+      <Modal
         isOpen={deleteTargetId !== null}
         title="Delete Exercise Set?"
         description="Are you sure you want to permanently delete this exercise set? This will permanently delete all associated questions, answers, student attempts, and stats. This action is irreversible."
+        variant="danger"
         confirmLabel="Delete Set"
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTargetId(null)}
+      />
+
+      <Modal
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        description={alertConfig.description}
+        variant={alertConfig.variant}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, isOpen: false }))}
       />
 
       {/* Dynamic Slide-in Preview Modal */}
@@ -399,40 +449,95 @@ export default function AdminExercisesPage() {
 
                     <p className="text-sm font-semibold text-text-primary">{q.questionText}</p>
 
-                    {q.type === "MULTIPLE_CHOICE" ? (
-                      <div className="grid grid-cols-1 gap-2 pl-2">
-                        {q.options?.map((opt: any, oIdx: number) => (
-                          <div
-                            key={opt.id || oIdx}
-                            className={cn(
-                              "text-xs p-3 rounded-lg border flex items-center gap-3",
-                              opt.isCorrect
-                                ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
-                                : "bg-neutral-background border-neutral-border/40 text-text-secondary"
-                            )}
-                          >
-                            <span className="font-bold text-[10px] uppercase w-5 h-5 rounded flex items-center justify-center bg-neutral-border">
-                              {String.fromCharCode(65 + oIdx)}
-                            </span>
-                            <span className="flex-1">{opt.optionText}</span>
-                            {opt.isCorrect && (
-                              <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-400">
-                                Correct Option
+                    {(() => {
+                      const metadata = q.metadata as Record<string, any> | undefined;
+                      switch (q.type) {
+                        case "MULTIPLE_CHOICE": {
+                          const mcOptions = q.options ?? metadata?.options?.map((o: any, idx: number) => ({
+                            id: idx,
+                            optionText: o.optionText ? o.optionText : (o.key && o.content ? `${o.key}. ${o.content}` : o.content || ""),
+                            isCorrect: o.isCorrect === true || String(o.isCorrect).toLowerCase() === "true" || (metadata?.correctAnswer && o.key === metadata.correctAnswer),
+                          })) ?? [];
+
+                          return (
+                            <div className="grid grid-cols-1 gap-2 pl-2">
+                              {mcOptions.map((opt: any, oIdx: number) => (
+                                <div
+                                  key={opt.id || oIdx}
+                                  className={cn(
+                                    "text-xs p-3 rounded-lg border flex items-center gap-3",
+                                    opt.isCorrect
+                                      ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
+                                      : "bg-neutral-background border-neutral-border/40 text-text-secondary"
+                                  )}
+                                >
+                                  <span className="font-bold text-[10px] uppercase w-5 h-5 rounded flex items-center justify-center bg-neutral-border">
+                                    {String.fromCharCode(65 + oIdx)}
+                                  </span>
+                                  <span className="flex-1">{opt.optionText}</span>
+                                  {opt.isCorrect && (
+                                    <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-400">
+                                      Correct Option
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        case "FILL_IN_BLANK": {
+                          const accepted = q.correctAnswers ?? metadata?.acceptedAnswers ?? [];
+                          return (
+                            <div className="bg-neutral-background border border-neutral-border rounded-lg p-3 text-xs space-y-1">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary block">
+                                Accepted Blanks:
                               </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="bg-neutral-background border border-neutral-border rounded-lg p-3 text-xs space-y-1">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary block">
-                          Accepted Blanks:
-                        </span>
-                        <p className="font-mono text-emerald-400 font-bold leading-relaxed">
-                          {q.correctAnswers?.join("  /  ") || "(None Specified)"}
-                        </p>
-                      </div>
-                    )}
+                              <p className="font-mono text-emerald-400 font-bold leading-relaxed">
+                                {accepted.join("  /  ") || "(None Specified)"}
+                              </p>
+                            </div>
+                          );
+                        }
+                        case "FIND_AND_CORRECT": {
+                          const mistake = metadata?.mistakeText ?? "";
+                          const accepted = metadata?.acceptedAnswers ?? [];
+                          return (
+                            <div className="bg-neutral-background border border-neutral-border rounded-lg p-3 text-xs space-y-2">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary block">
+                                Mistake Word &amp; Accepted Corrections:
+                              </span>
+                              <p className="text-xs font-semibold text-text-primary">
+                                Mistake: <span className="text-red-400">&quot;{mistake}&quot;</span>
+                              </p>
+                              <p className="text-xs font-semibold text-text-primary">
+                                Accepted corrections: <span className="text-emerald-400">{accepted.join(" or ")}</span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        case "SENTENCE_REWRITE": {
+                          const keyword = metadata?.keyword ?? "";
+                          const accepted = q.correctAnswers ?? metadata?.acceptedAnswers ?? [];
+                          return (
+                            <div className="bg-neutral-background border border-neutral-border rounded-lg p-3 text-xs space-y-2">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary block">
+                                Rewrite Prompt details:
+                              </span>
+                              {keyword && (
+                                <p className="text-xs font-semibold text-text-primary">
+                                  Keyword: <span className="text-amber-500 font-mono font-bold">&quot;{keyword}&quot;</span>
+                                </p>
+                              )}
+                              <p className="text-xs font-semibold text-text-primary">
+                                Accepted sentences: <span className="text-emerald-400">{accepted.join("  /  ")}</span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        default:
+                          return null;
+                      }
+                    })()}
 
                     {q.explanation && (
                       <div className="bg-primary/5 border border-primary/15 rounded-lg p-3 text-xs text-text-secondary leading-relaxed">

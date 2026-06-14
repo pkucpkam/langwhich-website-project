@@ -15,9 +15,13 @@ public class ExerciseSetResponse {
     private Long topicId;
     private String topicName;
     private String topicSlug;
+    private Long lessonId;
+    private String lessonTitle;
+    private String lessonSlug;
     private Difficulty difficulty;
     private int estimatedMinutes;
     private String thumbnailUrl;
+    @com.fasterxml.jackson.annotation.JsonProperty("isPublished")
     private boolean isPublished;
     private int questionCount;
     private String createdAt;
@@ -31,11 +35,15 @@ public class ExerciseSetResponse {
             .topicId(set.getTopic() != null ? set.getTopic().getId() : null)
             .topicName(set.getTopic() != null ? set.getTopic().getName() : null)
             .topicSlug(set.getTopic() != null ? set.getTopic().getSlug() : null)
+            .lessonId(set.getLesson() != null ? set.getLesson().getId() : null)
+            .lessonTitle(set.getLesson() != null ? set.getLesson().getTitle() : null)
+            .lessonSlug(set.getLesson() != null ? set.getLesson().getSlug() : null)
             .difficulty(set.getDifficulty())
             .estimatedMinutes(set.getEstimatedMinutes())
             .thumbnailUrl(set.getThumbnailUrl())
             .isPublished(set.isPublished())
-            .questionCount(set.getQuestions() != null ? set.getQuestions().size() : 0)
+            .questionCount(set.getSections() != null ? 
+                set.getSections().stream().mapToInt(s -> s.getQuestions().size()).sum() : 0)
             .createdAt(set.getCreatedAt() != null ? set.getCreatedAt().toString() : null)
             .build();
     }

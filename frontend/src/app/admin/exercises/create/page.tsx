@@ -2,12 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Edit3, Sparkles } from "lucide-react";
 import { AdminExerciseForm } from "@/features/exercise/components/AdminExerciseForm";
 import { QuickImportForm } from "@/features/exercise/components/QuickImportForm";
 import { cn } from "@/lib/utils";
 
 export default function AdminExerciseCreatePage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"manual" | "import">("manual");
 
   return (
@@ -66,7 +68,10 @@ export default function AdminExerciseCreatePage() {
       {activeTab === "manual" ? (
         <AdminExerciseForm />
       ) : (
-        <QuickImportForm mode="full" />
+        <QuickImportForm
+          mode="full"
+          onSuccess={() => router.push("/admin/exercises")}
+        />
       )}
     </div>
   );

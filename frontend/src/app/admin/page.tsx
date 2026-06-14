@@ -32,6 +32,7 @@ function AdminDashboardContent() {
 
   // Vocab Folder modal
   const [vocabFolderModalOpen, setVocabFolderModalOpen] = useState(false);
+  const [vocabFolderEditId, setVocabFolderEditId] = useState<number | null>(null);
   const [vocabFolderName, setVocabFolderName] = useState("");
   const [vocabFolderDesc, setVocabFolderDesc] = useState("");
   const [vocabFolderColor, setVocabFolderColor] = useState(FOLDER_COLORS[0]);
@@ -65,24 +66,40 @@ function AdminDashboardContent() {
   }, [loadAdminData]);
 
   // ===== VOCAB FOLDER ACTION =====
-  const handleCreateVocabFolder = async (e: React.FormEvent) => {
+  const handleSubmitVocabFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vocabFolderName.trim()) return;
 
     setVocabFolderSubmitting(true);
     try {
-      await adminApi.createOfficialFolder({
+      const payload = {
         name: vocabFolderName.trim(),
         description: vocabFolderDesc.trim() || undefined,
         color: vocabFolderColor,
         icon: vocabFolderIcon,
-      });
+      };
+
+      if (vocabFolderEditId) {
+        await adminApi.updateOfficialFolder(vocabFolderEditId, payload);
+      } else {
+        await adminApi.createOfficialFolder(payload);
+      }
       setVocabFolderModalOpen(false);
       await loadAdminData();
     } catch {
-      alert("Failed to create vocabulary folder.");
+      alert(`Failed to ${vocabFolderEditId ? "update" : "create"} vocabulary folder.`);
     } finally {
       setVocabFolderSubmitting(false);
+    }
+  };
+
+  const handleDeleteVocabFolder = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this collection? This action cannot be undone.")) return;
+    try {
+      await adminApi.deleteOfficialFolder(id);
+      await loadAdminData();
+    } catch {
+      alert("Failed to delete the collection.");
     }
   };
 
@@ -129,6 +146,7 @@ function AdminDashboardContent() {
               variant="primary"
               size="sm"
               onClick={() => {
+                setVocabFolderEditId(null);
                 setVocabFolderName("");
                 setVocabFolderDesc("");
                 setVocabFolderColor(FOLDER_COLORS[0]);
@@ -229,12 +247,35 @@ function AdminDashboardContent() {
             {vocabFoldersList.map((folder) => (
               <div
                 key={folder.id}
-                className="rounded-2xl border p-5 flex flex-col items-center text-center gap-3"
+                className="rounded-2xl border p-5 flex flex-col items-center text-center gap-3 relative group transition-all hover:bg-white/5"
                 style={{
                   borderColor: `${folder.color}30`,
                   backgroundColor: `${folder.color}05`,
                 }}
               >
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVocabFolderEditId(folder.id);
+                      setVocabFolderName(folder.name);
+                      setVocabFolderDesc(folder.description || "");
+                      setVocabFolderColor(folder.color);
+                      setVocabFolderIcon(folder.icon);
+                      setVocabFolderModalOpen(true);
+                    }}
+                    className="p-1.5 rounded-md hover:bg-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors"
+                  >
+                    <Edit size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteVocabFolder(folder.id)}
+                    className="p-1.5 rounded-md hover:bg-[#1F2937] text-[#9CA3AF] hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
                 <div
                   className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
                   style={{ backgroundColor: `${folder.color}15` }}
@@ -326,8 +367,8 @@ function AdminDashboardContent() {
             >
               <X size={16} />
             </button>
-            <h3 className="text-base font-bold text-[#F9FAFB] mb-4">New Official Collection</h3>
-            <form onSubmit={handleCreateVocabFolder} className="space-y-4">
+            <h3 className="text-base font-bold text-[#F9FAFB] mb-4">{vocabFolderEditId ? "Edit" : "New"} Official Collection</h3>
+            <form onSubmit={handleSubmitVocabFolder} className="space-y-4">
               <Input
                 id="vocab-folder-name"
                 label="Folder Name *"
@@ -385,7 +426,7 @@ function AdminDashboardContent() {
               </div>
               <div className="flex gap-3 justify-end pt-4">
                 <Button type="button" variant="outline" size="sm" onClick={() => setVocabFolderModalOpen(false)}>Cancel</Button>
-                <Button type="submit" variant="primary" size="sm" isLoading={vocabFolderSubmitting}>Create Collection</Button>
+                <Button type="submit" variant="primary" size="sm" isLoading={vocabFolderSubmitting}>{vocabFolderEditId ? "Save Changes" : "Create Collection"}</Button>
               </div>
             </form>
           </div>

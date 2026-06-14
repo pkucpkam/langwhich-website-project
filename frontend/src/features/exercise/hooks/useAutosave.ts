@@ -28,8 +28,7 @@ export function useAutosave() {
             setIsAutosaving(true);
             await exerciseApi.saveAnswer(attemptId, {
               questionId: qId,
-              selectedOptionId: answer.selectedOptionId,
-              textAnswer: answer.textAnswer,
+              payload: answer,
             });
             markAsSaved(qId, true);
           } catch (error) {

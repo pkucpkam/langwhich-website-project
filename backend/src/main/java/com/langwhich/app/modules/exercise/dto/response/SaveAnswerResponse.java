@@ -9,4 +9,9 @@ import lombok.*;
 public class SaveAnswerResponse {
     private boolean success;
     private String message;
+    private Boolean isCorrect;
+    private Double score;
+    private Double maxScore;
+    private String feedback;
+    private String explanation;
 }

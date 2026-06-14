@@ -20,11 +20,13 @@ import {
 } from "lucide-react";
 import { exerciseApi } from "../api";
 import { theoryApi } from "@/api/theory.api";
-import type { TheoryTopic } from "@/types/theory";
+import type { TheoryTopic, TheoryLesson } from "@/types/theory";
 import type { AdminQuestion, Difficulty, ExerciseType } from "../types";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { QuickImportForm } from "./QuickImportForm";
+import { Alert } from "@/components/ui/Alert";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface AdminExerciseFormProps {
   setId?: number; // Present only in edit mode
@@ -42,14 +44,21 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [isPublished, setIsPublished] = useState(false);
   const [topicId, setTopicId] = useState<number | null>(null);
+  const [lessonId, setLessonId] = useState<number | null>(null);
 
-  // Topics cache
+  // Topics and Lessons cache
   const [topics, setTopics] = useState<TheoryTopic[]>([]);
+  const [lessons, setLessons] = useState<TheoryLesson[]>([]);
 
   // Page level statuses
   const [loading, setLoading] = useState(isEditMode);
   const [savingMetadata, setSavingMetadata] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Deletion modal state
+  const [deletingQuestionId, setDeletingQuestionId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Questions builder states
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
@@ -77,17 +86,21 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
   // Validation errors
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch topics
+  // Fetch topics and lessons
   useEffect(() => {
-    async function fetchTopics() {
+    async function fetchTheoryData() {
       try {
-        const data = await theoryApi.getAllTopicsAdmin();
-        setTopics(data);
+        const [topicsData, lessonsData] = await Promise.all([
+          theoryApi.getAllTopicsAdmin(),
+          theoryApi.getAllLessonsAdmin({ size: 1000 })
+        ]);
+        setTopics(topicsData);
+        setLessons(lessonsData.content || []);
       } catch (err) {
-        console.error("Failed to load theory topics", err);
+        console.error("Failed to load theory data", err);
       }
     }
-    fetchTopics();
+    fetchTheoryData();
   }, []);
 
   // Fetch exercise details if in edit mode
@@ -100,13 +113,14 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
         setError(null);
         const data = await exerciseApi.adminGetExerciseSetDetail(setId as number);
 
-        setTitle(data.title);
+        setTitle(data.title || "");
         setDescription(data.description || "");
-        setDifficulty(data.difficulty);
-        setEstimatedMinutes(data.estimatedMinutes);
+        setDifficulty(data.difficulty || "BEGINNER");
+        setEstimatedMinutes(data.estimatedMinutes || 10);
         setThumbnailUrl(data.thumbnailUrl || "");
-        setIsPublished(data.isPublished);
+        setIsPublished(!!data.isPublished);
         setTopicId(data.topicId || null);
+        setLessonId(data.lessonId || null);
         setQuestions(data.questions || []);
       } catch (err: any) {
         console.error("Failed to load exercise set details", err);
@@ -122,18 +136,20 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
   const handleSaveMetadata = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      alert("Title is required");
+      setError("Title is required");
       return;
     }
 
     try {
       setSavingMetadata(true);
       setError(null);
+      setSuccess(null);
 
       const payload = {
         title: title.trim(),
         description: description.trim() || undefined,
         topicId: topicId,
+        lessonId: lessonId,
         difficulty,
         estimatedMinutes,
         thumbnailUrl: thumbnailUrl.trim() || undefined,
@@ -142,11 +158,10 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
 
       if (isEditMode && setId) {
         await exerciseApi.adminUpdateExerciseSet(setId, payload);
-        alert("Metadata updated successfully!");
+        setSuccess("Metadata updated successfully!");
       } else {
-        const createdSet = await exerciseApi.adminCreateExerciseSet(payload);
-        alert("Exercise Set created! Let's add some practice questions next.");
-        router.push(`/admin/exercises/${createdSet.id}/edit?tab=questions`);
+        await exerciseApi.adminCreateExerciseSet(payload);
+        router.push("/admin/exercises");
       }
     } catch (err: any) {
       console.error("Failed to save metadata", err);
@@ -167,11 +182,12 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
   // Reorder questions on backend
   const syncReorder = async (updatedQuestions: AdminQuestion[]) => {
     try {
+      setError(null);
       const ids = updatedQuestions.map((q) => q.id);
       await exerciseApi.adminReorderQuestions(ids);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to sync reorder with server", err);
-      alert("Error syncing new question order with the server.");
+      setError(err.response?.data?.message || "Error syncing new question order with the server.");
     }
   };
 
@@ -203,7 +219,7 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
   // Remove dynamic MC Option row
   const removeOptionRow = (idx: number) => {
     if (options.length <= 2) {
-      alert("Multiple choice questions require at least 2 options.");
+      setFormError("Multiple choice questions require at least 2 options.");
       return;
     }
     setOptions(options.filter((_, i) => i !== idx));
@@ -244,14 +260,20 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
     setQExplanation(q.explanation || "");
 
     if (q.type === "MULTIPLE_CHOICE") {
+      const qOptions = q.options || (q.metadata as any)?.options || [];
+      const mappedOptions = qOptions.map((o: any) => ({
+        optionText: o.optionText || o.content || "",
+        isCorrect: !!o.isCorrect,
+      }));
       setOptions(
-        q.options?.map((o) => ({
-          optionText: o.optionText,
-          isCorrect: o.isCorrect,
-        })) || []
+        mappedOptions.length > 0 ? mappedOptions : [
+          { optionText: "", isCorrect: true },
+          { optionText: "", isCorrect: false },
+        ]
       );
     } else {
-      setFibAnswers(q.correctAnswers || []);
+      const answers = q.correctAnswers || (q.metadata as any)?.acceptedAnswers || (q.metadata as any)?.correctAnswers || [];
+      setFibAnswers(answers);
       setFibInput("");
     }
 
@@ -275,14 +297,25 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
     setShowQuestionForm(true);
   };
 
-  const handleDeleteQuestion = async (qId: number) => {
-    if (!confirm("Are you sure you want to permanently delete this question?")) return;
+  const startDeleteQuestion = (qId: number) => {
+    setDeletingQuestionId(qId);
+  };
+
+  const handleConfirmDeleteQuestion = async () => {
+    if (!deletingQuestionId) return;
     try {
-      await exerciseApi.adminDeleteQuestion(qId);
-      setQuestions(questions.filter((q) => q.id !== qId));
-    } catch (err) {
+      setIsDeleting(true);
+      setError(null);
+      setSuccess(null);
+      await exerciseApi.adminDeleteQuestion(deletingQuestionId);
+      setQuestions(questions.filter((q) => q.id !== deletingQuestionId));
+      setSuccess("Question deleted successfully!");
+    } catch (err: any) {
       console.error("Failed to delete question", err);
-      alert("Error deleting question.");
+      setError(err.response?.data?.message || "Failed to delete question.");
+    } finally {
+      setIsDeleting(false);
+      setDeletingQuestionId(null);
     }
   };
 
@@ -315,30 +348,37 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
         setFormError("You must select at least one correct option.");
         return;
       }
-      payload.options = validOptions.map((o, idx) => ({
-        optionText: o.optionText.trim(),
-        isCorrect: o.isCorrect,
-        sortOrder: idx,
-      }));
+      payload.metadata = {
+        options: validOptions.map((o, idx) => ({
+          optionText: o.optionText.trim(),
+          isCorrect: o.isCorrect,
+          sortOrder: idx,
+        }))
+      };
     } else {
       if (fibAnswers.length === 0) {
         setFormError("You must add at least one accepted fill-in-blank text answer.");
         return;
       }
-      payload.correctAnswers = fibAnswers;
+      payload.metadata = {
+        acceptedAnswers: fibAnswers
+      };
     }
 
     try {
       if (setId === undefined) return;
 
+      setError(null);
+      setSuccess(null);
+
       if (editingQuestionId) {
         const updated = await exerciseApi.adminUpdateQuestion(editingQuestionId, payload);
         setQuestions((prev) => prev.map((q) => (q.id === editingQuestionId ? updated : q)));
-        alert("Question updated successfully!");
+        setSuccess("Question updated successfully!");
       } else {
         const created = await exerciseApi.adminCreateQuestion(setId as number, payload);
         setQuestions([...questions, created]);
-        alert("New question added!");
+        setSuccess("New question added!");
       }
       setShowQuestionForm(false);
     } catch (err: any) {
@@ -401,12 +441,12 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
         </div>
       )}
 
-      {/* ERROR MESSAGE DISPLAY */}
+      {/* NOTIFICATIONS DISPLAY */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <span>{error}</span>
-        </div>
+        <Alert variant="error" message={error} onDismiss={() => setError(null)} />
+      )}
+      {success && (
+        <Alert variant="success" message={success} onDismiss={() => setSuccess(null)} />
       )}
 
       {/* METADATA SECTION */}
@@ -439,13 +479,35 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
               </label>
               <select
                 value={topicId || ""}
-                onChange={(e) => setTopicId(e.target.value ? parseInt(e.target.value) : null)}
+                onChange={(e) => {
+                  setTopicId(e.target.value ? parseInt(e.target.value) : null);
+                  setLessonId(null);
+                }}
                 className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-border bg-neutral-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all"
               >
                 <option value="">General (No specific grammar topic)</option>
                 {topics.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lesson Select */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider block">
+                Specific Theory Lesson
+              </label>
+              <select
+                value={lessonId || ""}
+                onChange={(e) => setLessonId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-border bg-neutral-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+              >
+                <option value="">None (Attach to Topic or General only)</option>
+                {(topicId ? lessons.filter(l => l.topicId === topicId) : lessons).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.title}
                   </option>
                 ))}
               </select>
@@ -668,7 +730,7 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteQuestion(q.id)}
+                          onClick={() => startDeleteQuestion(q.id)}
                           className="p-1 hover:bg-status-error/10 rounded border border-neutral-border/60 hover:border-status-error text-text-secondary hover:text-status-error"
                           title="Delete question card"
                         >
@@ -947,6 +1009,16 @@ export function AdminExerciseForm({ setId }: AdminExerciseFormProps) {
           </div>
         </div>
       ))}
+
+      <ConfirmModal
+        isOpen={deletingQuestionId !== null}
+        title="Delete Question"
+        description="Are you sure you want to permanently delete this question? This action cannot be undone."
+        confirmLabel="Delete"
+        loading={isDeleting}
+        onConfirm={handleConfirmDeleteQuestion}
+        onClose={() => setDeletingQuestionId(null)}
+      />
     </div>
   );
 }
