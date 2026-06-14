@@ -1,10 +1,12 @@
 import type { Question } from "../types";
 import { Input } from "@/components/ui/Input";
+import { useEffect, useRef } from "react";
 
 interface FillBlankQuestionProps {
   question: Question;
   textAnswer?: string | null;
   onChange: (value: string) => void;
+  onEnterPress?: () => void;
   disabled?: boolean;
   checkedFeedback?: {
     isCorrect: boolean;
@@ -16,6 +18,7 @@ export function FillBlankQuestion({
   question,
   textAnswer = "",
   onChange,
+  onEnterPress,
   disabled = false,
   checkedFeedback = null,
 }: FillBlankQuestionProps) {
@@ -28,6 +31,25 @@ export function FillBlankQuestion({
     }
   }
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Focus the input when the question changes
+    if (!disabled && !checkedFeedback) {
+      // Small timeout to ensure rendering is complete, especially during animations
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [question.id, disabled, checkedFeedback]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && onEnterPress) {
+      onEnterPress();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-lg md:text-xl font-medium text-text-primary leading-relaxed bg-neutral-card p-6 rounded-xl border border-neutral-border shadow-sm">
@@ -38,10 +60,13 @@ export function FillBlankQuestion({
           Your Answer
         </label>
         <Input
+          ref={inputRef}
           value={textAnswer ?? ""}
           onChange={(e) => !checkedFeedback && onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Type your answer here..."
-          disabled={disabled || !!checkedFeedback}
+          disabled={disabled}
+          readOnly={!!checkedFeedback}
           autoComplete="off"
           className={inputStyle}
         />

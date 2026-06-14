@@ -51,9 +51,11 @@ export const exerciseApi = {
     return response.data;
   },
 
-  startAttempt: async (id: number): Promise<StartAttemptResponse> => {
+  startAttempt: async (id: number, forceNew?: boolean): Promise<StartAttemptResponse> => {
     const response = await vocabApiClient.post<StartAttemptResponse>(
-      `/exercises/${id}/start`
+      `/exercises/${id}/start`,
+      null,
+      { params: forceNew !== undefined ? { forceNew } : undefined }
     );
     return response.data;
   },
@@ -88,6 +90,10 @@ export const exerciseApi = {
       `/exercises/attempts/${attemptId}/review`
     );
     return response.data;
+  },
+
+  deleteAttempt: async (attemptId: number): Promise<void> => {
+    await vocabApiClient.delete(`/exercises/attempts/${attemptId}`);
   },
 
   // ===== ADMIN APIS =====

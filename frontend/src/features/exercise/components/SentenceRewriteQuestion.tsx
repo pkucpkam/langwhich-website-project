@@ -1,10 +1,12 @@
 import type { Question } from "../types";
 import { Input } from "@/components/ui/Input";
+import { useEffect, useRef } from "react";
 
 interface SentenceRewriteQuestionProps {
   question: Question;
   payload?: Record<string, unknown> | null;
   onChange: (value: Record<string, unknown>) => void;
+  onEnterPress?: () => void;
   disabled?: boolean;
   checkedFeedback?: {
     isCorrect: boolean;
@@ -16,6 +18,7 @@ export function SentenceRewriteQuestion({
   question,
   payload = {},
   onChange,
+  onEnterPress,
   disabled = false,
   checkedFeedback = null,
 }: SentenceRewriteQuestionProps) {
@@ -29,6 +32,24 @@ export function SentenceRewriteQuestion({
       inputStyle += " border-red-500 bg-red-500/5 focus:ring-red-500";
     }
   }
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Focus the input when the question changes
+    if (!disabled && !checkedFeedback) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [question.id, disabled, checkedFeedback]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && onEnterPress) {
+      onEnterPress();
+    }
+  };
 
   const metadata = question.metadata as Record<string, unknown> | undefined;
   const keyword = (metadata?.keyword as string) ?? "";
@@ -53,10 +74,13 @@ export function SentenceRewriteQuestion({
           Write Your Rewritten Sentence
         </label>
         <Input
+          ref={inputRef}
           value={text}
           onChange={(e) => !checkedFeedback && onChange({ text: e.target.value })}
+          onKeyDown={handleKeyDown}
           placeholder="Type your complete sentence here..."
-          disabled={disabled || !!checkedFeedback}
+          disabled={disabled}
+          readOnly={!!checkedFeedback}
           autoComplete="off"
           className={inputStyle}
         />

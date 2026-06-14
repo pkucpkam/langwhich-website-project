@@ -10,6 +10,7 @@ interface QuestionRendererProps {
   selectedOptionId?: number | null; // Legacy compatibility
   textAnswer?: string | null;       // Legacy compatibility
   onChange: (payload: Record<string, unknown>) => void;
+  onEnterPress?: () => void;
   disabled?: boolean;
   checkedFeedback?: {
     isCorrect: boolean;
@@ -28,6 +29,7 @@ export function QuestionRenderer({
   selectedOptionId,
   textAnswer,
   onChange,
+  onEnterPress,
   disabled = false,
   checkedFeedback = null,
 }: QuestionRendererProps) {
@@ -76,6 +78,7 @@ export function QuestionRenderer({
                 question={question}
                 textAnswer={activeText}
                 onChange={(txtVal) => onChange({ textAnswer: txtVal })}
+                onEnterPress={onEnterPress}
                 disabled={disabled}
                 checkedFeedback={checkedFeedback}
               />
@@ -87,6 +90,7 @@ export function QuestionRenderer({
                 question={question}
                 payload={resolvedPayload}
                 onChange={onChange}
+                onEnterPress={onEnterPress}
                 disabled={disabled}
                 checkedFeedback={checkedFeedback}
               />
@@ -97,6 +101,7 @@ export function QuestionRenderer({
                 question={question}
                 payload={resolvedPayload}
                 onChange={onChange}
+                onEnterPress={onEnterPress}
                 disabled={disabled}
                 checkedFeedback={checkedFeedback}
               />

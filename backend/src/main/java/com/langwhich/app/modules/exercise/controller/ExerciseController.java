@@ -50,9 +50,10 @@ public class ExerciseController {
     @PostMapping("/{id}/start")
     public ResponseEntity<StartAttemptResponse> startAttempt(
             @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "false") boolean forceNew,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(exerciseService.startAttempt(id, user));
+        return ResponseEntity.ok(exerciseService.startAttempt(id, forceNew, user));
     }
 
     @GetMapping("/attempts/{attemptId}")
@@ -86,5 +87,14 @@ public class ExerciseController {
             @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.ok(exerciseService.getAttemptReview(attemptId, user));
+    }
+
+    @DeleteMapping("/attempts/{attemptId}")
+    public ResponseEntity<Void> deleteAttempt(
+            @PathVariable Long attemptId,
+            @AuthenticationPrincipal User user
+    ) {
+        exerciseService.deleteAttempt(attemptId, user);
+        return ResponseEntity.noContent().build();
     }
 }

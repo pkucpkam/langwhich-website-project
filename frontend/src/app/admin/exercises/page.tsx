@@ -456,7 +456,7 @@ export default function AdminExercisesPage() {
                           const mcOptions = q.options ?? metadata?.options?.map((o: any, idx: number) => ({
                             id: idx,
                             optionText: o.optionText ? o.optionText : (o.key && o.content ? `${o.key}. ${o.content}` : o.content || ""),
-                            isCorrect: !!o.isCorrect || o.key === metadata?.correctAnswer,
+                            isCorrect: o.isCorrect === true || String(o.isCorrect).toLowerCase() === "true" || (metadata?.correctAnswer && o.key === metadata.correctAnswer),
                           })) ?? [];
 
                           return (

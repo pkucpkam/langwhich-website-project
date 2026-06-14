@@ -31,5 +31,6 @@ public class AdminExerciseSetRequest {
 
     private String thumbnailUrl;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isPublished")
     private boolean isPublished;
 }

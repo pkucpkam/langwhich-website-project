@@ -21,6 +21,7 @@ public class ExerciseSetResponse {
     private Difficulty difficulty;
     private int estimatedMinutes;
     private String thumbnailUrl;
+    @com.fasterxml.jackson.annotation.JsonProperty("isPublished")
     private boolean isPublished;
     private int questionCount;
     private String createdAt;

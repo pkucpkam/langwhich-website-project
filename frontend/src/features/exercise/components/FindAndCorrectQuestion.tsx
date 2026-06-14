@@ -1,10 +1,12 @@
 import type { Question } from "../types";
 import { Input } from "@/components/ui/Input";
+import { useEffect, useRef } from "react";
 
 interface FindAndCorrectQuestionProps {
   question: Question;
   payload?: Record<string, unknown> | null;
   onChange: (value: Record<string, unknown>) => void;
+  onEnterPress?: () => void;
   disabled?: boolean;
   checkedFeedback?: {
     isCorrect: boolean;
@@ -16,6 +18,7 @@ export function FindAndCorrectQuestion({
   question,
   payload = {},
   onChange,
+  onEnterPress,
   disabled = false,
   checkedFeedback = null,
 }: FindAndCorrectQuestionProps) {
@@ -34,6 +37,23 @@ export function FindAndCorrectQuestion({
       correctionInputStyle += " border-red-500 bg-red-500/5 focus:ring-red-500";
     }
   }
+
+  const mistakeInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!disabled && !checkedFeedback) {
+      const timer = setTimeout(() => {
+        mistakeInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [question.id, disabled, checkedFeedback]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && onEnterPress) {
+      onEnterPress();
+    }
+  };
 
   const metadata = question.metadata as Record<string, unknown> | undefined;
   const mistakeText = (metadata?.mistakeText as string) ?? "";
@@ -54,6 +74,7 @@ export function FindAndCorrectQuestion({
             1. Incorrect Part
           </label>
           <Input
+            ref={mistakeInputRef}
             value={selectedMistake}
             onChange={(e) =>
               !checkedFeedback &&
@@ -62,8 +83,10 @@ export function FindAndCorrectQuestion({
                 correction,
               })
             }
+            onKeyDown={handleKeyDown}
             placeholder="e.g. have"
-            disabled={disabled || !!checkedFeedback}
+            disabled={disabled}
+            readOnly={!!checkedFeedback}
             autoComplete="off"
             className={mistakeInputStyle}
           />
@@ -82,8 +105,10 @@ export function FindAndCorrectQuestion({
                 correction: e.target.value,
               })
             }
+            onKeyDown={handleKeyDown}
             placeholder="e.g. has"
-            disabled={disabled || !!checkedFeedback}
+            disabled={disabled}
+            readOnly={!!checkedFeedback}
             autoComplete="off"
             className={correctionInputStyle}
           />

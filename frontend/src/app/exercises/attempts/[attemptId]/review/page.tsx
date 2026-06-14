@@ -285,7 +285,7 @@ export default function PracticeReviewPage() {
                         const mcOptions = q.options ?? metadata?.options?.map((o: any, idx: number) => ({
                           id: idx,
                           optionText: o.optionText ? o.optionText : (o.key && o.content ? `${o.key}. ${o.content}` : o.content || ""),
-                          isCorrect: !!o.isCorrect || o.key === metadata?.correctAnswer,
+                          isCorrect: o.isCorrect === true || String(o.isCorrect).toLowerCase() === "true" || (metadata?.correctAnswer && o.key === metadata.correctAnswer),
                         })) ?? [];
 
                         const activeOptionId = payload?.selectedOptionId as number | undefined;
@@ -311,7 +311,7 @@ export default function PracticeReviewPage() {
                                 >
                                   <span
                                     className={cn(
-                                      "w-7.5 h-7.5 rounded-lg flex items-center justify-center font-bold text-xs",
+                                      "w-8 h-8 shrink-0 rounded-lg flex items-center justify-center font-bold text-sm",
                                       isCorrectOption
                                         ? "bg-green-500 text-white"
                                         : isUserSelection

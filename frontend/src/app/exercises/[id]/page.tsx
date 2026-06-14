@@ -10,7 +10,8 @@ import { ExerciseNavigation } from "@/features/exercise/components/ExerciseNavig
 import { QuestionPalette } from "@/features/exercise/components/QuestionPalette";
 import { QuestionRenderer } from "@/features/exercise/components/QuestionRenderer";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { Loader2, AlertCircle, CheckCircle2, XCircle, ChevronRight, Check } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Loader2, AlertCircle, CheckCircle2, XCircle, ChevronRight, Check, RotateCcw, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function PracticeSessionPage() {
@@ -23,7 +24,7 @@ export default function PracticeSessionPage() {
   const storeIndex = usePracticeStore((state) => state.currentQuestionIndex);
   const answers = usePracticeStore((state) => state.answers);
   const savedAnswers = usePracticeStore((state) => state.savedAnswers);
-  
+
   const initPractice = usePracticeStore((state) => state.initPractice);
   const setQuestionIndex = usePracticeStore((state) => state.setQuestionIndex);
   const updateAnswer = usePracticeStore((state) => state.updateAnswer);
@@ -194,6 +195,40 @@ export default function PracticeSessionPage() {
 
   const handleAnswerChange = (data: Record<string, unknown>) => {
     updateAnswer(currentQuestion.id, data);
+
+    // Auto-advance for MULTIPLE_CHOICE questions in ALL_AT_ONCE mode
+    if (currentQuestion.type === "MULTIPLE_CHOICE" && practiceMode === "ALL_AT_ONCE") {
+      setTimeout(() => {
+        const latestIndex = usePracticeStore.getState().currentQuestionIndex;
+        const latestQuestions = usePracticeStore.getState().exerciseSet?.questions || [];
+        if (latestIndex < latestQuestions.length - 1) {
+          setQuestionIndex(latestIndex + 1);
+        }
+      }, 400);
+    }
+  };
+
+  const handleEnterPress = () => {
+    if (practiceMode === "INSTANT") {
+      const isChecked = !!checkedQuestions[currentQuestion.id];
+      if (!isChecked) {
+        if (hasProvidedAnswer) {
+          handleCheckQuestion(currentQuestion.id);
+        }
+      } else {
+        if (storeIndex < questions.length - 1) {
+          handleNext();
+        } else {
+          handleSubmitAttempt();
+        }
+      }
+    } else {
+      if (storeIndex < questions.length - 1) {
+        handleNext();
+      } else {
+        handleSubmitAttempt();
+      }
+    }
   };
 
   const handleExitPractice = () => {
@@ -204,6 +239,22 @@ export default function PracticeSessionPage() {
     setShowExitModal(false);
     clearPractice();
     router.push("/exercises");
+  };
+
+  const handleDiscardExit = async () => {
+    if (!attemptId) return;
+    try {
+      setShowExitModal(false);
+      setLoading(true);
+      await exerciseApi.deleteAttempt(attemptId);
+      clearPractice();
+      router.push("/exercises");
+    } catch (err) {
+      console.error("Failed to discard attempt:", err);
+      alert("Không thể hủy lượt làm. Vui lòng thử lại!");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmitAttempt = () => {
@@ -249,6 +300,19 @@ export default function PracticeSessionPage() {
         correctAnswers: (res as any).correctAnswers,
       });
       markAsSaved(questionId, true);
+
+      // Auto-advance for INSTANT mode if answer is correct
+      if (res.isCorrect) {
+        setTimeout(() => {
+          const latestIndex = usePracticeStore.getState().currentQuestionIndex;
+          const latestQuestions = usePracticeStore.getState().exerciseSet?.questions || [];
+          // Ensure the user hasn't already moved to another question manually
+          const currentStoreQuestion = latestQuestions[latestIndex];
+          if (currentStoreQuestion && currentStoreQuestion.id === questionId && latestIndex < latestQuestions.length - 1) {
+            setQuestionIndex(latestIndex + 1);
+          }
+        }, 1500);
+      }
     } catch (err) {
       console.error("Failed to check question:", err);
       alert("Không thể kiểm tra đáp án. Vui lòng thử lại!");
@@ -271,7 +335,7 @@ export default function PracticeSessionPage() {
 
       {/* Main Practice Hub */}
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
+
         {/* Left Side: Question content */}
         <div className="lg:col-span-3 space-y-6">
           <div className="flex items-center justify-between">
@@ -287,6 +351,7 @@ export default function PracticeSessionPage() {
             question={currentQuestion}
             payload={answers[currentQuestion.id]}
             onChange={handleAnswerChange}
+            onEnterPress={handleEnterPress}
             checkedFeedback={checkedQuestions[currentQuestion.id]}
           />
 
@@ -318,7 +383,7 @@ export default function PracticeSessionPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   {storeIndex < questions.length - 1 ? (
                     <button
                       type="button"
@@ -373,7 +438,7 @@ export default function PracticeSessionPage() {
         {/* Right Side: Sidebar Navigation Palette */}
         <div className="lg:col-span-1">
           <div className="sticky top-28 space-y-6">
-            
+
             {/* Practice Mode Selector */}
             <div className="bg-neutral-card border border-neutral-border rounded-xl p-5 shadow-sm space-y-3">
               <h4 className="font-bold text-text-primary uppercase tracking-wider text-xs">
@@ -448,15 +513,75 @@ export default function PracticeSessionPage() {
         isSubmitting={isSubmitting}
       />
 
-      {/* Exit Modal Dialogue */}
-      <ConfirmModal
-        isOpen={showExitModal}
-        title="Pause Practice Session?"
-        description="Your inputs have been autosaved. You can safely close this browser or return later to resume this attempt without losing progress."
-        confirmLabel="Pause and Exit"
-        onConfirm={handleConfirmExit}
-        onClose={() => setShowExitModal(false)}
-      />
+      {/* Custom Exit Modal Dialogue */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowExitModal(false)} />
+          
+          {/* Modal Content */}
+          <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl border border-neutral-border bg-neutral-card p-6 shadow-2xl space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-bold text-text-primary">
+                Tạm dừng hay Hủy bỏ bài làm?
+              </h3>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                Vui lòng chọn cách xử lý cho lượt làm bài hiện tại của bạn.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Option 1: Pause and Save */}
+              <button
+                type="button"
+                onClick={handleConfirmExit}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/45 transition-all duration-200 text-left group cursor-pointer"
+              >
+                <div className="h-10 w-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center border border-primary/20 flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <Play className="h-5 w-5 fill-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">
+                    Tạm dừng & Lưu tiến trình
+                  </p>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    Lưu các câu đã làm để lần sau tiếp tục.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Discard and Delete */}
+              <button
+                type="button"
+                onClick={handleDiscardExit}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border border-red-500/10 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/40 transition-all duration-200 text-left group cursor-pointer"
+              >
+                <div className="h-10 w-10 bg-red-500/10 text-red-500 rounded-xl flex items-center justify-center border border-red-500/20 flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <RotateCcw className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-text-primary group-hover:text-red-500 transition-colors">
+                    Hủy bỏ & Xóa tiến trình
+                  </p>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    Xóa sạch tiến trình hiện tại để làm lại từ đầu.
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-neutral-border/50">
+              <button
+                type="button"
+                onClick={() => setShowExitModal(false)}
+                className="w-full py-3 rounded-xl text-sm font-bold text-text-secondary hover:text-text-primary hover:bg-neutral-border/30 transition-all duration-200 text-center cursor-pointer"
+              >
+                Quay lại làm tiếp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Submit Modal Dialogue */}
       <ConfirmModal

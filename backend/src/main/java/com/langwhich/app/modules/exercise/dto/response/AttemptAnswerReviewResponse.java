@@ -11,7 +11,10 @@ import lombok.*;
 public class AttemptAnswerReviewResponse {
     private Long questionId;
     private JsonNode payload;
+    
+    @com.fasterxml.jackson.annotation.JsonProperty("isCorrect")
     private boolean isCorrect;
+    
     private int pointsEarned;
     private String feedback;
     private String explanation;

@@ -75,7 +75,7 @@ export function MultipleChoiceQuestion({
               }`}
             >
               <span
-                className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm transition-colors ${badgeStyle}`}
+                className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center font-bold text-sm transition-colors ${badgeStyle}`}
               >
                 {letter}
               </span>

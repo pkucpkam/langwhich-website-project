@@ -27,6 +27,7 @@ public class AdminExerciseSetDetailResponse {
     private Difficulty difficulty;
     private int estimatedMinutes;
     private String thumbnailUrl;
+    @com.fasterxml.jackson.annotation.JsonProperty("isPublished")
     private boolean isPublished;
     private List<AdminExerciseSectionResponse> sections;
     private List<AdminQuestionResponse> questions;

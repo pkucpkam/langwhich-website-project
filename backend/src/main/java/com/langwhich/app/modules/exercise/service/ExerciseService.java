@@ -20,7 +20,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import com.langwhich.app.modules.exercise.entity.ExerciseSet;
-import com.langwhich.app.modules.exercise.entity.ExerciseSection;
 import com.langwhich.app.modules.exercise.dto.response.ExerciseSetResponse;
 import com.langwhich.app.modules.exercise.dto.response.SubmitAttemptResponse;
 import com.langwhich.app.modules.exercise.dto.response.ExerciseSetDetailResponse;
@@ -32,7 +31,6 @@ import com.langwhich.app.modules.exercise.entity.ExerciseAttemptAnswer;
 import com.langwhich.app.modules.exercise.entity.UserQuestionAttempt;
 import com.langwhich.app.modules.exercise.repository.ExerciseQuestionRepository;
 import com.langwhich.app.modules.exercise.repository.UserQuestionAttemptRepository;
-import com.langwhich.app.modules.exercise.entity.ExerciseType;
 import com.langwhich.app.modules.exercise.repository.ExerciseSetRepository;
 import com.langwhich.app.modules.exercise.entity.AttemptStatus;
 import com.langwhich.app.modules.exercise.dto.response.StartAttemptResponse;
@@ -69,10 +67,10 @@ public class ExerciseService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ExerciseSetResponse> getExerciseSets(String topicSlug, Long lessonId, Difficulty difficulty, String search, Pageable pageable) {
+    public Page<ExerciseSetResponse> getExerciseSets(String topicSlug, Long lessonId, Difficulty difficulty,
+            String search, Pageable pageable) {
         Specification<ExerciseSet> spec = Specification.where(
-                (root, query, cb) -> cb.equal(root.get("isPublished"), true)
-        );
+                (root, query, cb) -> cb.equal(root.get("isPublished"), true));
 
         if (topicSlug != null && !topicSlug.trim().isEmpty()) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("topic").get("slug"), topicSlug));
@@ -90,8 +88,7 @@ public class ExerciseService {
             String searchLower = "%" + search.trim().toLowerCase() + "%";
             spec = spec.and((root, query, cb) -> cb.or(
                     cb.like(cb.lower(root.get("title")), searchLower),
-                    cb.like(cb.lower(root.get("description")), searchLower)
-            ));
+                    cb.like(cb.lower(root.get("description")), searchLower)));
         }
 
         return exerciseSetRepository.findAll(spec, pageable)
@@ -109,18 +106,29 @@ public class ExerciseService {
     }
 
     public StartAttemptResponse startAttempt(Long setId, User user) {
+        return startAttempt(setId, false, user);
+    }
+
+    public StartAttemptResponse startAttempt(Long setId, boolean forceNew, User user) {
         ExerciseSet set = exerciseSetRepository.findById(setId)
                 .orElseThrow(() -> new ResourceNotFoundException("Exercise Set not found with id: " + setId));
-        
+
         if (!set.isPublished()) {
             throw new ConflictException("Cannot practice an unpublished exercise set");
         }
 
         Optional<ExerciseAttempt> activeAttempt = exerciseAttemptRepository
                 .findFirstByUserIdAndExerciseSetIdOrderByStartedAtDesc(user.getId(), setId);
-        
+
         if (activeAttempt.isPresent() && activeAttempt.get().getStatus() == AttemptStatus.IN_PROGRESS) {
-            return new StartAttemptResponse(activeAttempt.get().getId());
+            if (forceNew) {
+                ExerciseAttempt toDiscard = activeAttempt.get();
+                exerciseAttemptAnswerRepository.deleteByAttemptId(toDiscard.getId());
+                exerciseAttemptRepository.delete(toDiscard);
+                exerciseAttemptRepository.flush();
+            } else {
+                return new StartAttemptResponse(activeAttempt.get().getId());
+            }
         }
 
         int totalQuestions = set.getSections().stream()
@@ -155,7 +163,8 @@ public class ExerciseService {
         }
 
         ExerciseQuestion question = exerciseQuestionRepository.findById(request.getQuestionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Question not found with id: " + request.getQuestionId()));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Question not found with id: " + request.getQuestionId()));
 
         if (!question.getExerciseSection().getExerciseSet().getId().equals(attempt.getExerciseSet().getId())) {
             throw new ConflictException("Question does not belong to this exercise set");
@@ -245,7 +254,7 @@ public class ExerciseService {
 
         for (ExerciseQuestion q : questions) {
             totalPossiblePoints += q.getPoints();
-            
+
             Optional<ExerciseAttemptAnswer> answeredOpt = answers.stream()
                     .filter(a -> a.getQuestion().getId().equals(q.getId()))
                     .findFirst();
@@ -267,8 +276,8 @@ public class ExerciseService {
             }
         }
 
-        double score = totalPossiblePoints > 0 
-                ? ((double) totalPointsEarned / totalPossiblePoints) * 100.0 
+        double score = totalPossiblePoints > 0
+                ? ((double) totalPointsEarned / totalPossiblePoints) * 100.0
                 : 0.0;
 
         LocalDateTime submittedAt = LocalDateTime.now();
@@ -324,5 +333,21 @@ public class ExerciseService {
         }
 
         return AttemptReviewResponse.fromEntity(attempt);
+    }
+
+    public void deleteAttempt(Long attemptId, User user) {
+        ExerciseAttempt attempt = exerciseAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt not found with id: " + attemptId));
+
+        if (!attempt.getUser().getId().equals(user.getId())) {
+            throw new ForbiddenException("You do not have permission to delete this attempt");
+        }
+
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new ConflictException("Can only delete in-progress attempts");
+        }
+
+        exerciseAttemptAnswerRepository.deleteByAttemptId(attemptId);
+        exerciseAttemptRepository.delete(attempt);
     }
 }
