@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TheoryLessonRequest {
 
-    @NotNull(message = "Topic ID is required")
     private Long topicId;
 
     @NotBlank(message = "Lesson title is required")

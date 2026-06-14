@@ -21,6 +21,7 @@ public interface TheoryLessonRepository extends JpaRepository<TheoryLesson, Long
     Page<TheoryLesson> findAllByTopicSlugAndIsPublishedTrue(String topicSlug, Pageable pageable);
 
     Page<TheoryLesson> findAllByIsPublishedTrue(Pageable pageable);
+    long countByTopicIsNullAndIsPublishedTrue();
 
     @Query("SELECT l FROM TheoryLesson l WHERE l.isPublished = true AND " +
            "(LOWER(l.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.summary) LIKE LOWER(CONCAT('%', :search, '%')))")

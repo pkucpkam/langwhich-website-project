@@ -73,12 +73,37 @@ public class TheoryService {
     }
 
     public List<TheoryTopicResponse> getPublishedTopics() {
-        return topicRepository.findAllByIsPublishedTrueOrderByOrderIndexAsc().stream()
+        List<TheoryTopicResponse> topics = topicRepository.findAllByIsPublishedTrueOrderByOrderIndexAsc().stream()
             .map(TheoryTopicResponse::fromEntity)
-            .toList();
+            .collect(java.util.stream.Collectors.toList());
+            
+        long generalLessonsCount = lessonRepository.countByTopicIsNullAndIsPublishedTrue();
+        if (generalLessonsCount > 0) {
+            topics.add(TheoryTopicResponse.builder()
+                .id(null)
+                .name("General Lessons")
+                .slug("general")
+                .description("Miscellaneous lessons that are not part of a specific categorized track.")
+                .icon("📚")
+                .isPublished(true)
+                .orderIndex(999)
+                .build());
+        }
+        return topics;
     }
 
     public TheoryTopicResponse getTopicBySlug(String slug) {
+        if ("general".equalsIgnoreCase(slug)) {
+            return TheoryTopicResponse.builder()
+                .id(null)
+                .name("General Lessons")
+                .slug("general")
+                .description("Miscellaneous lessons that are not part of a specific categorized track.")
+                .icon("📚")
+                .isPublished(true)
+                .orderIndex(999)
+                .build();
+        }
         TheoryTopic topic = topicRepository.findBySlug(slug)
             .orElseThrow(() -> new ResourceNotFoundException("Topic not found with slug: " + slug));
         return TheoryTopicResponse.fromEntity(topic);
@@ -123,8 +148,11 @@ public class TheoryService {
 
     @Transactional
     public TheoryLessonResponse createLesson(TheoryLessonRequest request) {
-        TheoryTopic topic = topicRepository.findById(request.getTopicId())
-            .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + request.getTopicId()));
+        TheoryTopic topic = null;
+        if (request.getTopicId() != null) {
+            topic = topicRepository.findById(request.getTopicId())
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + request.getTopicId()));
+        }
 
         String slug = toSlug(request.getTitle());
         int count = 1;
@@ -182,14 +210,22 @@ public class TheoryService {
     }
 
     public Page<TheoryLessonResponse> getLessonsByTopicSlug(String topicSlug, String search, Difficulty difficulty, Pageable pageable) {
-        // First ensure topic exists and is published
-        TheoryTopic topic = topicRepository.findBySlug(topicSlug)
-            .orElseThrow(() -> new ResourceNotFoundException("Topic not found with slug: " + topicSlug));
+        Specification<TheoryLesson> spec;
+        
+        if ("general".equalsIgnoreCase(topicSlug)) {
+            spec = Specification.where((root, query, cb) -> cb.and(
+                cb.equal(root.get("isPublished"), true),
+                cb.isNull(root.get("topic"))
+            ));
+        } else {
+            TheoryTopic topic = topicRepository.findBySlug(topicSlug)
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found with slug: " + topicSlug));
 
-        Specification<TheoryLesson> spec = Specification.where((root, query, cb) -> cb.and(
-            cb.equal(root.get("isPublished"), true),
-            cb.equal(root.get("topic").get("id"), topic.getId())
-        ));
+            spec = Specification.where((root, query, cb) -> cb.and(
+                cb.equal(root.get("isPublished"), true),
+                cb.equal(root.get("topic").get("id"), topic.getId())
+            ));
+        }
 
         if (search != null && !search.trim().isEmpty()) {
             spec = spec.and((root, query, cb) -> cb.or(
@@ -229,8 +265,11 @@ public class TheoryService {
         TheoryLesson lesson = lessonRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Lesson not found with id: " + id));
 
-        TheoryTopic topic = topicRepository.findById(request.getTopicId())
-            .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + request.getTopicId()));
+        TheoryTopic topic = null;
+        if (request.getTopicId() != null) {
+            topic = topicRepository.findById(request.getTopicId())
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + request.getTopicId()));
+        }
 
         if (!lesson.getTitle().equalsIgnoreCase(request.getTitle())) {
             String slug = toSlug(request.getTitle());
@@ -277,6 +316,7 @@ public class TheoryService {
     }
 
     public List<TheoryLessonResponse> getRelatedLessons(Long topicId, Long excludeId) {
+        if (topicId == null) return List.of();
         Pageable limit = PageRequest.of(0, 3);
         return lessonRepository.findRelatedLessons(topicId, excludeId, limit).stream()
             .map(TheoryLessonResponse::fromEntity)
@@ -284,6 +324,7 @@ public class TheoryService {
     }
 
     public TheoryLessonResponse getPreviousLesson(Long topicId, java.time.LocalDateTime createdAt) {
+        if (topicId == null) return null;
         Pageable limit = PageRequest.of(0, 1);
         List<TheoryLesson> results = lessonRepository.findPreviousLesson(topicId, createdAt, limit);
         if (results.isEmpty()) return null;
@@ -291,6 +332,7 @@ public class TheoryService {
     }
 
     public TheoryLessonResponse getNextLesson(Long topicId, java.time.LocalDateTime createdAt) {
+        if (topicId == null) return null;
         Pageable limit = PageRequest.of(0, 1);
         List<TheoryLesson> results = lessonRepository.findNextLesson(topicId, createdAt, limit);
         if (results.isEmpty()) return null;

@@ -21,7 +21,7 @@ public class TheoryLesson {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id", nullable = false)
+    @JoinColumn(name = "topic_id")
     private TheoryTopic topic;
 
     @Column(nullable = false, length = 200)

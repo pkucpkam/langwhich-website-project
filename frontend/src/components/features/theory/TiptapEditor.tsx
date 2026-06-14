@@ -53,6 +53,7 @@ export function TiptapEditor({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("saved");
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: {

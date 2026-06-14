@@ -1,7 +1,7 @@
 import axios from "axios";
 import { handleTokenRefresh } from "./auth-refresh";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8082";
 
 export const apiClient = axios.create({
   baseURL: `${API_URL}/api/v1`,

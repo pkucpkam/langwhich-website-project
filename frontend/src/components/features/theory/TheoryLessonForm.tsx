@@ -58,7 +58,7 @@ export function TheoryLessonForm({
         const data = await theoryApi.getAllTopicsAdmin();
         setTopics(data);
         if (data.length > 0 && !initialValues) {
-          setTopicId(data[0].id);
+          setTopicId("");
         }
       } catch (error) {
         console.error("Failed to load topics inside editor form", error);
@@ -85,13 +85,13 @@ export function TheoryLessonForm({
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !topicId || !content.trim()) {
+    if (!title.trim() || !content.trim()) {
       setAlertOpen(true);
       return;
     }
 
     const request: TheoryLessonRequest = {
-      topicId: Number(topicId),
+      topicId: topicId ? Number(topicId) : undefined,
       title: title.trim(),
       summary: summary.trim() || undefined,
       thumbnail: thumbnail.trim() || undefined,
@@ -190,18 +190,17 @@ export function TheoryLessonForm({
             {/* Category Dropdown Selection */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Topic Category Track *
+                Topic Category Track (Optional)
               </label>
               {loadingTopics ? (
                 <div className="h-10 w-full bg-neutral-background animate-pulse rounded-xl border border-neutral-border" />
               ) : (
                 <select
                   value={topicId}
-                  onChange={(e) => setTopicId(Number(e.target.value) || "")}
-                  required
+                  onChange={(e) => setTopicId(e.target.value ? Number(e.target.value) : "")}
                   className="w-full px-4 py-2.5 text-sm rounded-xl border border-neutral-border bg-neutral-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all cursor-pointer"
                 >
-                  <option value="" disabled>Select category...</option>
+                  <option value="">No Category</option>
                   {topics.map((topic) => (
                     <option key={topic.id} value={topic.id}>
                       {topic.icon} {topic.name}

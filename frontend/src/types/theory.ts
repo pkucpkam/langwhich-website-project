@@ -15,7 +15,7 @@ export interface TheoryTopic {
 
 export interface TheoryLesson {
   id: number;
-  topicId: number;
+  topicId?: number;
   topicName?: string;
   topicSlug?: string;
   title: string;
@@ -40,7 +40,7 @@ export interface TheoryTopicRequest {
 }
 
 export interface TheoryLessonRequest {
-  topicId: number;
+  topicId?: number;
   title: string;
   summary?: string;
   thumbnail?: string;
